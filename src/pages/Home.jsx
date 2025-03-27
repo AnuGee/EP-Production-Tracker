@@ -18,13 +18,12 @@ import {
 import * as XLSX from "xlsx";
 
 const db = getFirestore();
+const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
 export default function Home() {
   const [allData, setAllData] = useState([]);
   const [user, setUser] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-
-  const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
@@ -40,13 +39,21 @@ export default function Home() {
 
   const countStatus = (dept) => {
     const counts = { ยังไม่ถึง: 0, กำลังทำ: 0, เสร็จแล้ว: 0 };
+
     allData.forEach((item) => {
-      const stepIndex = departments.indexOf(item.CurrentStep);
+      const step = item.CurrentStep;
+      const stepIndex = departments.indexOf(step);
       const deptIndex = departments.indexOf(dept);
-      if (stepIndex === deptIndex) counts["กำลังทำ"]++;
-      else if (stepIndex > deptIndex) counts["เสร็จแล้ว"]++;
-      else counts["ยังไม่ถึง"]++;
+
+      if (stepIndex === deptIndex) {
+        counts["กำลังทำ"]++;
+      } else if (stepIndex > deptIndex) {
+        counts["เสร็จแล้ว"]++;
+      } else {
+        counts["ยังไม่ถึง"]++;
+      }
     });
+
     return counts;
   };
 
@@ -78,59 +85,41 @@ export default function Home() {
   };
 
   const renderProgressBar = (step) => {
-    const index = departments.indexOf(step);
-    return departments.map((dept, i) => {
-      let color = "#d1d5db"; // default: gray
-      if (i < index) color = "#4ade80"; // green
-      else if (i === index) color = "#facc15"; // yellow
-      return (
-        <div
-          key={dept}
-          style={{
-            flex: 1,
-            height: "20px",
-            backgroundColor: color,
-            marginRight: i !== departments.length - 1 ? "4px" : "0",
-            borderRadius: "4px",
-          }}
-          title={dept}
-        ></div>
-      );
-    });
-  };
-
-  return (
-    <div style={{ maxWidth: "1000px", margin: "auto", padding: "20px" }}>
-      <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
-
-      <h3>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
-      <div style={{ display: "flex", fontWeight: "bold", marginBottom: "6px", paddingLeft: "100px", gap: "4px" }}>
-        {departments.map((dept) => (
+    const currentIndex = departments.indexOf(step);
+    return (
+      <div style={{ display: "flex", gap: "4px", marginBottom: "5px" }}>
+        {departments.map((dept, index) => (
           <div
             key={dept}
             style={{
               flex: 1,
+              height: "18px",
+              backgroundColor:
+                index < currentIndex
+                  ? "#4ade80" // เสร็จแล้ว
+                  : index === currentIndex
+                  ? "#facc15" // กำลังทำ
+                  : "#d1d5db", // ยังไม่ถึง
+              borderRadius: "4px",
               textAlign: "center",
-              fontSize: "14px",
-              color: "#374151",
+              fontSize: "0.7rem",
+              lineHeight: "18px",
+              color: "#1f2937",
+              fontWeight: "500",
             }}
           >
             {dept}
           </div>
         ))}
       </div>
-      {allData.map((item, idx) => (
-        <div key={idx} style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-          <div style={{ width: "120px", fontSize: "14px", color: "#1e3a8a" }}>
-            📄 {item.Product || "(ไม่ระบุ)"}
-          </div>
-          <div style={{ flex: 1, display: "flex" }}>
-            {renderProgressBar(item.CurrentStep)}
-          </div>
-        </div>
-      ))}
+    );
+  };
 
-      <h3>📊 สรุปสถานะงานรายแผนก</h3>
+  return (
+    <div style={{ maxWidth: "1000px", margin: "auto", padding: "20px", fontFamily: "Segoe UI, sans-serif" }}>
+      <h2 style={{ fontSize: "1.6rem", marginBottom: "20px" }}>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
+
+      <h3 style={{ fontSize: "1.2rem", marginBottom: "10px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
           <XAxis type="number" />
@@ -143,21 +132,19 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      {user?.role === "admin" && (
-        <div style={{ marginTop: "20px" }}>
-          <button onClick={handleExport} style={buttonGreen}>
-            📥 Export Excel
-          </button>
-          <button onClick={() => setShowDetails(!showDetails)} style={buttonBlue}>
-            {showDetails ? "🔽 ซ่อนรายละเอียด" : "🔍 ดูรายละเอียด"}
-          </button>
-        </div>
-      )}
+      <div style={{ marginTop: "20px" }}>
+        <button onClick={handleExport} style={buttonExportStyle}>
+          📥 Export Excel
+        </button>
+        <button onClick={() => setShowDetails(!showDetails)} style={buttonDetailStyle}>
+          {showDetails ? "🔽 ซ่อนรายละเอียด" : "🔍 ดูรายละเอียด"}
+        </button>
+      </div>
 
       {showDetails && (
         <div style={{ marginTop: "30px" }}>
-          <h3>📋 รายการงานทั้งหมด</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+          <h3 style={{ marginBottom: "10px" }}>📋 รายการงานทั้งหมด</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ backgroundColor: "#f3f4f6" }}>
                 <th style={thStyle}>Batch No</th>
@@ -166,7 +153,8 @@ export default function Home() {
                 <th style={thStyle}>Customer</th>
                 <th style={thStyle}>Volume</th>
                 <th style={thStyle}>Delivery Date</th>
-                {user?.role === "admin" && <th style={thStyle}>ลบ</th>}
+                <th style={thStyle}>Progress</th>
+                {(user?.role === "admin" || user?.role === "sales") && <th style={thStyle}>ลบ</th>}
               </tr>
             </thead>
             <tbody>
@@ -178,7 +166,8 @@ export default function Home() {
                   <td style={tdStyle}>{item.Customer || "-"}</td>
                   <td style={tdStyle}>{item.Volume || "-"}</td>
                   <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
-                  {user?.role === "admin" && (
+                  <td style={tdStyle}>{renderProgressBar(item.CurrentStep)}</td>
+                  {(user?.role === "admin" || user?.role === "sales") && (
                     <td style={tdStyle}>
                       <button
                         onClick={() => handleDelete(item.id)}
@@ -216,7 +205,7 @@ const tdStyle = {
   border: "1px solid #ddd",
 };
 
-const buttonGreen = {
+const buttonExportStyle = {
   padding: "10px 16px",
   backgroundColor: "#16a34a",
   color: "#fff",
@@ -227,7 +216,7 @@ const buttonGreen = {
   cursor: "pointer",
 };
 
-const buttonBlue = {
+const buttonDetailStyle = {
   padding: "10px 16px",
   backgroundColor: "#2563eb",
   color: "#fff",
