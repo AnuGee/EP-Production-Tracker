@@ -23,6 +23,7 @@ export default function Home() {
   const [allData, setAllData] = useState([]);
   const [user, setUser] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
 
   const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
@@ -38,9 +39,7 @@ export default function Home() {
     setAllData(data);
   };
 
-  const filterByMonth = (data) => {
-    if (selectedMonth === "all") return data;
-
+  const filterByDate = (data) => {
     return data.filter((item) => {
       const rawDate = item.DeliveryDate;
       if (!rawDate) return false;
@@ -52,11 +51,19 @@ export default function Home() {
         dateObj = new Date(rawDate);
       }
 
-      return dateObj.getMonth() + 1 === parseInt(selectedMonth);
+      const itemYear = dateObj.getFullYear();
+      const itemMonth = dateObj.getMonth() + 1;
+
+      const yearMatch =
+        selectedYear === "all" || itemYear === parseInt(selectedYear);
+      const monthMatch =
+        selectedMonth === "all" || itemMonth === parseInt(selectedMonth);
+
+      return yearMatch && monthMatch;
     });
   };
 
-  const filteredData = filterByMonth(allData);
+  const filteredData = filterByDate(allData);
 
   const countStatus = (dept) => {
     const counts = { ยังไม่ถึง: 0, กำลังทำ: 0, เสร็จแล้ว: 0 };
@@ -113,10 +120,25 @@ export default function Home() {
     <div style={{ maxWidth: "1200px", margin: "auto", padding: "20px" }}>
       <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
-      {/* 📅 Dropdown เดือน */}
-      <div style={{ margin: "16px 0" }}>
+      {/* 🔎 Filter ปี + เดือน */}
+      <div style={{ margin: "16px 0", display: "flex", gap: "20px" }}>
         <label>
-          📅 เลือกเดือน:{" "}
+          📆 เลือกปี:{" "}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            style={{ padding: "6px 12px", borderRadius: "6px" }}
+          >
+            <option value="all">ทั้งหมด</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </label>
+
+        <label>
+          🗓 เลือกเดือน:{" "}
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -190,7 +212,7 @@ export default function Home() {
         );
       })}
 
-      {/* 📊 กราฟรายแผนก */}
+      {/* 📊 กราฟ */}
       <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
@@ -204,7 +226,7 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* 📋 รายการทั้งหมด */}
+      {/* 📋 รายการงาน */}
       <div style={{ marginTop: "30px" }}>
         <h3>📋 รายการงานทั้งหมด</h3>
         <button
