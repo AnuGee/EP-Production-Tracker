@@ -18,11 +18,14 @@ import {
 import * as XLSX from "xlsx";
 
 const db = getFirestore();
-const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
 export default function Home() {
   const [allData, setAllData] = useState([]);
   const [user, setUser] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
+  const departmentColors = ["#fca5a5", "#fdba74", "#fde047", "#86efac", "#93c5fd"];
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
@@ -83,32 +86,27 @@ export default function Home() {
     }
   };
 
-  const renderProgressBar = (step) => {
-    const currentIndex = departments.indexOf(step);
+  const renderProgressBar = (item) => {
+    const currentStepIndex = departments.indexOf(item.CurrentStep);
+
     return (
-      <div style={{ display: "flex", gap: "4px", marginBottom: "5px" }}>
+      <div style={{ display: "flex", width: "100%", borderRadius: "6px", overflow: "hidden" }}>
         {departments.map((dept, index) => (
           <div
             key={dept}
+            title={dept}
             style={{
               flex: 1,
-              height: "20px",
+              height: "22px",
               backgroundColor:
-                index < currentIndex
-                  ? "#4ade80" // เสร็จแล้ว
-                  : index === currentIndex
-                  ? "#facc15" // กำลังทำ
-                  : "#d1d5db", // ยังไม่ถึง
-              borderRadius: "4px",
-              textAlign: "center",
-              fontSize: "0.65rem",
-              lineHeight: "20px",
-              fontWeight: "bold",
-              color: "#1f2937",
+                index < currentStepIndex
+                  ? "#86efac"
+                  : index === currentStepIndex
+                  ? "#facc15"
+                  : "#e5e7eb",
+              borderRight: index < departments.length - 1 ? "1px solid white" : "none",
             }}
-          >
-            {dept}
-          </div>
+          />
         ))}
       </div>
     );
@@ -118,8 +116,7 @@ export default function Home() {
     <div style={{ maxWidth: "1000px", margin: "auto", padding: "20px", fontFamily: "Segoe UI, sans-serif" }}>
       <h2 style={{ fontSize: "1.6rem", marginBottom: "20px" }}>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
-      <h3 style={{ fontSize: "1.2rem", marginBottom: "10px" }}>📊 สรุปสถานะงานรายแผนก</h3>
-
+      <h3 style={{ fontSize: "1.2rem" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
           <XAxis type="number" />
@@ -132,68 +129,98 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      <button
-        onClick={handleExport}
-        style={{
-          padding: "10px 16px",
-          backgroundColor: "#16a34a",
-          color: "#fff",
-          border: "none",
-          borderRadius: "5px",
-          marginTop: "20px",
-          cursor: "pointer",
-        }}
-      >
-        📥 Export Excel
-      </button>
+      <h3 style={{ fontSize: "1.2rem", marginTop: "40px" }}>📦 ความคืบหน้างานแต่ละชุด</h3>
+      <div style={{ display: "grid", gap: "12px", marginTop: "10px" }}>
+        {allData.map((item) => (
+          <div key={item.id} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "12px" }}>
+            <p style={{ marginBottom: "6px" }}>
+              <strong>{item.Product}</strong> ({item.BatchNo || "ไม่มี Batch"}) - {item.CurrentStep}
+            </p>
+            {renderProgressBar(item)}
+          </div>
+        ))}
+      </div>
 
       <div style={{ marginTop: "30px" }}>
-        <h3 style={{ marginBottom: "10px" }}>📋 รายการงานทั้งหมด</h3>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f3f4f6" }}>
-              <th style={thStyle}>Batch No</th>
-              <th style={thStyle}>Product</th>
-              <th style={thStyle}>Current Step</th>
-              <th style={thStyle}>Customer</th>
-              <th style={thStyle}>Volume</th>
-              <th style={thStyle}>Delivery Date</th>
-              <th style={thStyle}>Progress</th>
-              {(user?.role === "admin" || user?.role === "sales") && <th style={thStyle}>ลบ</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {allData.map((item) => (
-              <tr key={item.id}>
-                <td style={tdStyle}>{item.BatchNo}</td>
-                <td style={tdStyle}>{item.Product}</td>
-                <td style={tdStyle}>{item.CurrentStep}</td>
-                <td style={tdStyle}>{item.Customer || "-"}</td>
-                <td style={tdStyle}>{item.Volume || "-"}</td>
-                <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
-                <td style={tdStyle}>{renderProgressBar(item.CurrentStep)}</td>
-                {(user?.role === "admin" || user?.role === "sales") && (
-                  <td style={tdStyle}>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      style={{
-                        backgroundColor: "red",
-                        color: "#fff",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      ลบ
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <button
+          onClick={handleExport}
+          style={{
+            padding: "10px 16px",
+            backgroundColor: "#16a34a",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+            marginRight: "10px",
+            marginTop: "20px",
+            cursor: "pointer",
+          }}
+        >
+          📥 Export Excel
+        </button>
+
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          style={{
+            padding: "10px 16px",
+            backgroundColor: "#2563eb",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+            marginTop: "20px",
+            cursor: "pointer",
+          }}
+        >
+          🔍 รายละเอียด
+        </button>
       </div>
+
+      {showDetails && (
+        <div style={{ marginTop: "30px" }}>
+          <h3>📋 รายการงานทั้งหมด</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#f3f4f6" }}>
+                <th style={thStyle}>Batch No</th>
+                <th style={thStyle}>Product</th>
+                <th style={thStyle}>Current Step</th>
+                <th style={thStyle}>Customer</th>
+                <th style={thStyle}>Volume</th>
+                <th style={thStyle}>Delivery Date</th>
+                {(user?.role === "admin" || user?.role === "sales") && <th style={thStyle}>ลบ</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {allData.map((item) => (
+                <tr key={item.id}>
+                  <td style={tdStyle}>{item.BatchNo}</td>
+                  <td style={tdStyle}>{item.Product}</td>
+                  <td style={tdStyle}>{item.CurrentStep}</td>
+                  <td style={tdStyle}>{item.Customer || "-"}</td>
+                  <td style={tdStyle}>{item.Volume || "-"}</td>
+                  <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
+                  {(user?.role === "admin" || user?.role === "sales") && (
+                    <td style={tdStyle}>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        style={{
+                          backgroundColor: "red",
+                          color: "#fff",
+                          border: "none",
+                          padding: "5px 10px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ลบ
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
