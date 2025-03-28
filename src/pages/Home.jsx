@@ -22,6 +22,7 @@ const db = getFirestore();
 export default function Home() {
   const [allData, setAllData] = useState([]);
   const [user, setUser] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
   const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
@@ -37,10 +38,30 @@ export default function Home() {
     setAllData(data);
   };
 
+  const filterByMonth = (data) => {
+    if (selectedMonth === "all") return data;
+
+    return data.filter((item) => {
+      const rawDate = item.DeliveryDate;
+      if (!rawDate) return false;
+
+      let dateObj;
+      if (typeof rawDate === "object" && rawDate.seconds) {
+        dateObj = new Date(rawDate.seconds * 1000);
+      } else {
+        dateObj = new Date(rawDate);
+      }
+
+      return dateObj.getMonth() + 1 === parseInt(selectedMonth);
+    });
+  };
+
+  const filteredData = filterByMonth(allData);
+
   const countStatus = (dept) => {
     const counts = { ยังไม่ถึง: 0, กำลังทำ: 0, เสร็จแล้ว: 0 };
 
-    allData.forEach((item) => {
+    filteredData.forEach((item) => {
       const step = item.CurrentStep;
       const stepIndex = departments.indexOf(step);
       const deptIndex = departments.indexOf(dept);
@@ -63,13 +84,17 @@ export default function Home() {
   }));
 
   const handleExport = () => {
-    const exportData = allData.map((item) => ({
+    const exportData = filteredData.map((item) => ({
       BatchNo: item.BatchNo || "",
       Product: item.Product || "",
       CurrentStep: item.CurrentStep || "",
       Customer: item.Customer || "",
       Volume: item.Volume || "",
-      DeliveryDate: item.DeliveryDate || "",
+      DeliveryDate: item.DeliveryDate
+        ? typeof item.DeliveryDate === "object"
+          ? new Date(item.DeliveryDate.seconds * 1000).toLocaleDateString()
+          : item.DeliveryDate
+        : "",
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -88,16 +113,50 @@ export default function Home() {
     <div style={{ maxWidth: "1200px", margin: "auto", padding: "20px" }}>
       <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
-      {/* 🔴 Progress Bar แต่ละชุด */}
+      {/* 📅 Dropdown เดือน */}
+      <div style={{ margin: "16px 0" }}>
+        <label>
+          📅 เลือกเดือน:{" "}
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            style={{ padding: "6px 12px", borderRadius: "6px" }}
+          >
+            <option value="all">ทั้งหมด</option>
+            <option value="1">มกราคม</option>
+            <option value="2">กุมภาพันธ์</option>
+            <option value="3">มีนาคม</option>
+            <option value="4">เมษายน</option>
+            <option value="5">พฤษภาคม</option>
+            <option value="6">มิถุนายน</option>
+            <option value="7">กรกฎาคม</option>
+            <option value="8">สิงหาคม</option>
+            <option value="9">กันยายน</option>
+            <option value="10">ตุลาคม</option>
+            <option value="11">พฤศจิกายน</option>
+            <option value="12">ธันวาคม</option>
+          </select>
+        </label>
+      </div>
+
+      {/* 🔴 ความคืบหน้า */}
       <h3 style={{ marginTop: "30px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5, 110px)", gap: "10px", fontWeight: "bold", marginTop: "10px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "200px repeat(5, 110px)",
+          gap: "10px",
+          fontWeight: "bold",
+          marginTop: "10px",
+        }}
+      >
         <div>Product</div>
         {departments.map((dept) => (
           <div key={dept}>{dept}</div>
         ))}
       </div>
 
-      {allData.map((item) => {
+      {filteredData.map((item) => {
         const currentIndex = departments.indexOf(item.CurrentStep);
         return (
           <div
@@ -131,7 +190,7 @@ export default function Home() {
         );
       })}
 
-      {/* 📊 สรุปสถานะรายแผนก */}
+      {/* 📊 กราฟรายแผนก */}
       <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
@@ -145,7 +204,7 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* 📦 รายละเอียดงานทั้งหมด */}
+      {/* 📋 รายการทั้งหมด */}
       <div style={{ marginTop: "30px" }}>
         <h3>📋 รายการงานทั้งหมด</h3>
         <button
@@ -178,14 +237,20 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {allData.map((item) => (
+            {filteredData.map((item) => (
               <tr key={item.id}>
                 <td style={tdStyle}>{item.BatchNo}</td>
                 <td style={tdStyle}>{item.Product}</td>
                 <td style={tdStyle}>{item.CurrentStep}</td>
                 <td style={tdStyle}>{item.Customer || "-"}</td>
                 <td style={tdStyle}>{item.Volume || "-"}</td>
-                <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
+                <td style={tdStyle}>
+                  {item.DeliveryDate
+                    ? typeof item.DeliveryDate === "object"
+                      ? new Date(item.DeliveryDate.seconds * 1000).toLocaleDateString()
+                      : item.DeliveryDate
+                    : "-"}
+                </td>
                 {(user?.role === "admin" || user?.role === "sales") && (
                   <td style={tdStyle}>
                     <button
