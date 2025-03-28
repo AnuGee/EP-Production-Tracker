@@ -18,12 +18,12 @@ import {
 import * as XLSX from "xlsx";
 
 const db = getFirestore();
-const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
 export default function Home() {
   const [allData, setAllData] = useState([]);
   const [user, setUser] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
+
+  const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
@@ -84,51 +84,54 @@ export default function Home() {
     }
   };
 
-  const renderProgressBar = (step, currentStep) => {
-    const stepIndex = departments.indexOf(step);
-    const currentIndex = departments.indexOf(currentStep);
-
-    let bgColor = "#d1d5db"; // เทา = ยังไม่ถึง
-    if (currentIndex > stepIndex) bgColor = "#4ade80"; // เขียว = เสร็จแล้ว
-    else if (currentIndex === stepIndex) bgColor = "#facc15"; // เหลือง = กำลังทำ
-
-    return (
-      <div
-        key={step}
-        style={{
-          width: "80px",
-          height: "24px",
-          backgroundColor: bgColor,
-          borderRadius: "4px",
-          marginRight: "4px",
-        }}
-        title={step}
-      />
-    );
-  };
-
   return (
-    <div style={{ maxWidth: "1000px", margin: "auto", padding: "20px", fontFamily: "Segoe UI, sans-serif" }}>
-      <h2>🏠 <strong>หน้าหลัก – ภาพรวมการทำงาน</strong></h2>
+    <div style={{ maxWidth: "1200px", margin: "auto", padding: "20px" }}>
+      <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
-      <h3 style={{ marginTop: "20px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
-      <div style={{ display: "flex", marginBottom: "8px", marginLeft: "150px", gap: "8px" }}>
+      {/* 🔴 Progress Bar แต่ละชุด */}
+      <h3 style={{ marginTop: "30px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5, 110px)", gap: "10px", fontWeight: "bold", marginTop: "10px" }}>
+        <div>Product</div>
         {departments.map((dept) => (
-          <strong key={dept} style={{ width: "80px", textAlign: "center" }}>{dept}</strong>
+          <div key={dept}>{dept}</div>
         ))}
       </div>
 
-      {allData.map((item) => (
-        <div key={item.id} style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-          <span style={{ width: "140px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            📄 {item.Product || "-"}
-          </span>
-          <div style={{ display: "flex", gap: "4px" }}>
-            {departments.map((dept) => renderProgressBar(dept, item.CurrentStep))}
-          </div>
-        </div>
-      ))}
+      {allData.map((item) => {
+        const currentIndex = departments.indexOf(item.CurrentStep);
+        return (
+          <div
+            key={item.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "200px repeat(5, 110px)",
+              gap: "10px",
+              marginTop: "6px",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ fontSize: "14px" }}>📄 {item.Product || "-"}</div>
+            {departments.map((dept, index) => {
+              let color = "#d1d5db";
+              if (index < currentIndex) color = "#4ade80";
+              else if (index === currentIndex) color = "#facc15";
 
+              return (
+                <div
+                  key={dept}
+                  style={{
+                    height: "20px",
+                    backgroundColor: color,
+                    borderRadius: "4px",
+                  }}
+                ></div>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {/* 📊 สรุปสถานะรายแผนก */}
       <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
@@ -142,84 +145,69 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      <div style={{ marginTop: "20px" }}>
+      {/* 📦 รายละเอียดงานทั้งหมด */}
+      <div style={{ marginTop: "30px" }}>
+        <h3>📋 รายการงานทั้งหมด</h3>
         <button
           onClick={handleExport}
           style={{
-            padding: "10px 16px",
+            marginBottom: "10px",
+            padding: "8px 16px",
             backgroundColor: "#16a34a",
             color: "#fff",
             border: "none",
-            borderRadius: "5px",
-            marginRight: "10px",
+            borderRadius: "6px",
             cursor: "pointer",
           }}
         >
           📥 Export Excel
         </button>
 
-        <button
-          onClick={() => setShowDetails(true)}
-          style={{
-            padding: "10px 16px",
-            backgroundColor: "#2563eb",
-            color: "#fff",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          🔍 ดูรายละเอียด
-        </button>
-      </div>
-
-      {showDetails && (
-        <div style={{ marginTop: "30px" }}>
-          <h3>📋 รายการงานทั้งหมด</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#f3f4f6" }}>
-                <th style={thStyle}>Batch No</th>
-                <th style={thStyle}>Product</th>
-                <th style={thStyle}>Current Step</th>
-                <th style={thStyle}>Customer</th>
-                <th style={thStyle}>Volume</th>
-                <th style={thStyle}>Delivery Date</th>
-                {(user?.role === "admin" || user?.role === "sales") && <th style={thStyle}>ลบ</th>}
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f3f4f6" }}>
+              <th style={thStyle}>Batch No</th>
+              <th style={thStyle}>Product</th>
+              <th style={thStyle}>Current Step</th>
+              <th style={thStyle}>Customer</th>
+              <th style={thStyle}>Volume</th>
+              <th style={thStyle}>Delivery Date</th>
+              {(user?.role === "admin" || user?.role === "sales") && (
+                <th style={thStyle}>ลบ</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {allData.map((item) => (
+              <tr key={item.id}>
+                <td style={tdStyle}>{item.BatchNo}</td>
+                <td style={tdStyle}>{item.Product}</td>
+                <td style={tdStyle}>{item.CurrentStep}</td>
+                <td style={tdStyle}>{item.Customer || "-"}</td>
+                <td style={tdStyle}>{item.Volume || "-"}</td>
+                <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
+                {(user?.role === "admin" || user?.role === "sales") && (
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      style={{
+                        backgroundColor: "red",
+                        color: "#fff",
+                        border: "none",
+                        padding: "5px 10px",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ลบ
+                    </button>
+                  </td>
+                )}
               </tr>
-            </thead>
-            <tbody>
-              {allData.map((item) => (
-                <tr key={item.id}>
-                  <td style={tdStyle}>{item.BatchNo}</td>
-                  <td style={tdStyle}>{item.Product}</td>
-                  <td style={tdStyle}>{item.CurrentStep}</td>
-                  <td style={tdStyle}>{item.Customer || "-"}</td>
-                  <td style={tdStyle}>{item.Volume || "-"}</td>
-                  <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
-                  {(user?.role === "admin" || user?.role === "sales") && (
-                    <td style={tdStyle}>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        style={{
-                          backgroundColor: "red",
-                          color: "#fff",
-                          border: "none",
-                          padding: "5px 10px",
-                          borderRadius: "5px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        ลบ
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
