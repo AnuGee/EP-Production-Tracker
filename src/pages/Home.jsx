@@ -1,169 +1,224 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import * as XLSX from "xlsx";
 
-const Home = ({ user }) => {
-  const [jobs, setJobs] = useState([]);
-  const [showDetails, setShowDetails] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState("all");
+const db = getFirestore();
+
+export default function Home() {
+  const [allData, setAllData] = useState([]);
+  const [user, setUser] = useState(null);
+
+  const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      const querySnapshot = await getDocs(collection(db, "jobs"));
-      const jobData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setJobs(jobData);
-    };
-
-    fetchJobs();
+    const userInfo = JSON.parse(localStorage.getItem("user"));
+    setUser(userInfo);
+    fetchData();
   }, []);
 
-  const filteredJobs = jobs.filter((job) => {
-    if (selectedMonth === "all") return true;
-    if (!job.createdAt?.seconds) return false;
-    const jobDate = new Date(job.createdAt.seconds * 1000);
-    return jobDate.getMonth() + 1 === parseInt(selectedMonth);
-  });
+  const fetchData = async () => {
+    const snapshot = await getDocs(collection(db, "production_workflow"));
+    const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    setAllData(data);
+  };
+
+  const countStatus = (dept) => {
+    const counts = { ยังไม่ถึง: 0, กำลังทำ: 0, เสร็จแล้ว: 0 };
+
+    allData.forEach((item) => {
+      const step = item.CurrentStep;
+      const stepIndex = departments.indexOf(step);
+      const deptIndex = departments.indexOf(dept);
+
+      if (stepIndex === deptIndex) {
+        counts["กำลังทำ"]++;
+      } else if (stepIndex > deptIndex) {
+        counts["เสร็จแล้ว"]++;
+      } else {
+        counts["ยังไม่ถึง"]++;
+      }
+    });
+
+    return counts;
+  };
+
+  const chartData = departments.map((dept) => ({
+    name: dept,
+    ...countStatus(dept),
+  }));
 
   const handleExport = () => {
-    const data = filteredJobs.map((job) => ({
-      Product: job.productName,
-      Batch: job.batchNumber,
-      Sales: job.sales ? "✅" : "",
-      Warehouse: job.warehouse ? "✅" : "",
-      Production: job.production ? "✅" : "",
-      QC: job.qc ? "✅" : "",
-      Account: job.account ? "✅" : "",
+    const exportData = allData.map((item) => ({
+      BatchNo: item.BatchNo || "",
+      Product: item.Product || "",
+      CurrentStep: item.CurrentStep || "",
+      Customer: item.Customer || "",
+      Volume: item.Volume || "",
+      DeliveryDate: item.DeliveryDate || "",
     }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Jobs");
+    XLSX.writeFile(wb, "production_data.xlsx");
+  };
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
-    XLSX.writeFile(workbook, "EP_Jobs.xlsx");
+  const handleDelete = async (id) => {
+    if (window.confirm("ยืนยันลบงานนี้?")) {
+      await deleteDoc(doc(db, "production_workflow", id));
+      fetchData();
+    }
   };
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h1>📊 Dashboard</h1>
+    <div style={{ maxWidth: "1200px", margin: "auto", padding: "20px" }}>
+      <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
-      <div style={{ margin: "24px 0", border: "1px solid #ccc", padding: "16px", borderRadius: "12px" }}>
-        <p>📈 สรุปกราฟ (จะใส่ Dashboard จริงภายหลัง)</p>
+      {/* 🔴 Progress Bar แต่ละชุด */}
+      <h3 style={{ marginTop: "30px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5, 110px)", gap: "10px", fontWeight: "bold", marginTop: "10px" }}>
+        <div>Product</div>
+        {departments.map((dept) => (
+          <div key={dept}>{dept}</div>
+        ))}
       </div>
 
-      {/* Dropdown เลือกเดือน */}
-      <div style={{ marginBottom: "16px" }}>
-        <label>
-          📅 เลือกเดือน:{" "}
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            style={{ padding: "6px 12px", borderRadius: "6px" }}
+      {allData.map((item) => {
+        const currentIndex = departments.indexOf(item.CurrentStep);
+        return (
+          <div
+            key={item.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "200px repeat(5, 110px)",
+              gap: "10px",
+              marginTop: "6px",
+              alignItems: "center",
+            }}
           >
-            <option value="all">ทั้งหมด</option>
-            <option value="1">มกราคม</option>
-            <option value="2">กุมภาพันธ์</option>
-            <option value="3">มีนาคม</option>
-            <option value="4">เมษายน</option>
-            <option value="5">พฤษภาคม</option>
-            <option value="6">มิถุนายน</option>
-            <option value="7">กรกฎาคม</option>
-            <option value="8">สิงหาคม</option>
-            <option value="9">กันยายน</option>
-            <option value="10">ตุลาคม</option>
-            <option value="11">พฤศจิกายน</option>
-            <option value="12">ธันวาคม</option>
-          </select>
-        </label>
-      </div>
+            <div style={{ fontSize: "14px" }}>📄 {item.Product || "-"}</div>
+            {departments.map((dept, index) => {
+              let color = "#d1d5db";
+              if (index < currentIndex) color = "#4ade80";
+              else if (index === currentIndex) color = "#facc15";
 
-      {/* ความคืบหน้า */}
-      <h2>📌 ความคืบหน้าของงานแต่ละชุด</h2>
-      {filteredJobs.map((job) => (
-        <div key={job.id} style={{ marginBottom: "16px" }}>
-          <strong>{job.productName}</strong>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-            {["sales", "warehouse", "production", "qc", "account"].map((step) => (
-              <div key={step}>
-                <div style={{ textAlign: "center", fontSize: "12px" }}>{step.toUpperCase()}</div>
+              return (
                 <div
+                  key={dept}
                   style={{
-                    width: "110px",
-                    height: "14px",
-                    backgroundColor: job[step] ? "#4ade80" : "#f3f4f6",
-                    border: "1px solid #ccc",
-                    borderRadius: "6px",
+                    height: "20px",
+                    backgroundColor: color,
+                    borderRadius: "4px",
                   }}
-                />
-              </div>
-            ))}
+                ></div>
+              );
+            })}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
-      {/* ปุ่มรายละเอียด */}
-      <button
-        onClick={() => setShowDetails(!showDetails)}
-        style={{
-          margin: "16px 0",
-          padding: "8px 16px",
-          borderRadius: "8px",
-          border: "1px solid #888",
-          cursor: "pointer",
-        }}
-      >
-        🔍 รายละเอียด
-      </button>
+      {/* 📊 สรุปสถานะรายแผนก */}
+      <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
+          <XAxis type="number" />
+          <YAxis dataKey="name" type="category" />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="ยังไม่ถึง" stackId="a" fill="#d1d5db" />
+          <Bar dataKey="กำลังทำ" stackId="a" fill="#facc15" />
+          <Bar dataKey="เสร็จแล้ว" stackId="a" fill="#4ade80" />
+        </BarChart>
+      </ResponsiveContainer>
 
-      {/* รายการงาน */}
-      {showDetails && (
-        <table border="1" cellPadding="8" style={{ borderCollapse: "collapse", width: "100%" }}>
+      {/* 📦 รายละเอียดงานทั้งหมด */}
+      <div style={{ marginTop: "30px" }}>
+        <h3>📋 รายการงานทั้งหมด</h3>
+        <button
+          onClick={handleExport}
+          style={{
+            marginBottom: "10px",
+            padding: "8px 16px",
+            backgroundColor: "#16a34a",
+            color: "#fff",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          📥 Export Excel
+        </button>
+
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr>
-              <th>Product</th>
-              <th>Batch</th>
-              <th>Sales</th>
-              <th>Warehouse</th>
-              <th>Production</th>
-              <th>QC</th>
-              <th>Account</th>
+            <tr style={{ backgroundColor: "#f3f4f6" }}>
+              <th style={thStyle}>Batch No</th>
+              <th style={thStyle}>Product</th>
+              <th style={thStyle}>Current Step</th>
+              <th style={thStyle}>Customer</th>
+              <th style={thStyle}>Volume</th>
+              <th style={thStyle}>Delivery Date</th>
+              {(user?.role === "admin" || user?.role === "sales") && (
+                <th style={thStyle}>ลบ</th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {filteredJobs.map((job) => (
-              <tr key={job.id}>
-                <td>{job.productName}</td>
-                <td>{job.batchNumber}</td>
-                <td>{job.sales ? "✅" : ""}</td>
-                <td>{job.warehouse ? "✅" : ""}</td>
-                <td>{job.production ? "✅" : ""}</td>
-                <td>{job.qc ? "✅" : ""}</td>
-                <td>{job.account ? "✅" : ""}</td>
+            {allData.map((item) => (
+              <tr key={item.id}>
+                <td style={tdStyle}>{item.BatchNo}</td>
+                <td style={tdStyle}>{item.Product}</td>
+                <td style={tdStyle}>{item.CurrentStep}</td>
+                <td style={tdStyle}>{item.Customer || "-"}</td>
+                <td style={tdStyle}>{item.Volume || "-"}</td>
+                <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
+                {(user?.role === "admin" || user?.role === "sales") && (
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      style={{
+                        backgroundColor: "red",
+                        color: "#fff",
+                        border: "none",
+                        padding: "5px 10px",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ลบ
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
-      )}
-
-      {/* Export */}
-      <button
-        onClick={handleExport}
-        style={{
-          marginTop: "16px",
-          padding: "8px 16px",
-          borderRadius: "8px",
-          backgroundColor: "#2563eb",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        📥 Export Excel
-      </button>
+      </div>
     </div>
   );
+}
+
+const thStyle = {
+  padding: "8px",
+  border: "1px solid #ddd",
+  textAlign: "left",
 };
 
-export default Home;
+const tdStyle = {
+  padding: "8px",
+  border: "1px solid #ddd",
+};
