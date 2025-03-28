@@ -23,6 +23,7 @@ const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 export default function Home() {
   const [allData, setAllData] = useState([]);
   const [user, setUser] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
@@ -38,9 +39,12 @@ export default function Home() {
 
   const countStatus = (dept) => {
     const counts = { ยังไม่ถึง: 0, กำลังทำ: 0, เสร็จแล้ว: 0 };
+
     allData.forEach((item) => {
-      const stepIndex = departments.indexOf(item.CurrentStep);
+      const step = item.CurrentStep;
+      const stepIndex = departments.indexOf(step);
       const deptIndex = departments.indexOf(dept);
+
       if (stepIndex === deptIndex) {
         counts["กำลังทำ"]++;
       } else if (stepIndex > deptIndex) {
@@ -49,6 +53,7 @@ export default function Home() {
         counts["ยังไม่ถึง"]++;
       }
     });
+
     return counts;
   };
 
@@ -79,51 +84,51 @@ export default function Home() {
     }
   };
 
-  const renderProgressBar = (step) => {
-    return departments.map((dept, index) => {
-      const deptIndex = departments.indexOf(dept);
-      const stepIndex = departments.indexOf(step);
-      let bg = "#d1d5db"; // default: ยังไม่ถึง
-      if (stepIndex === deptIndex) bg = "#facc15"; // กำลังทำ
-      else if (stepIndex > deptIndex) bg = "#4ade80"; // เสร็จแล้ว
+  const renderProgressBar = (step, currentStep) => {
+    const stepIndex = departments.indexOf(step);
+    const currentIndex = departments.indexOf(currentStep);
 
-      return (
-        <div
-          key={index}
-          style={{
-            flex: 1,
-            backgroundColor: bg,
-            margin: "2px",
-            height: "25px",
-            borderRadius: "4px",
-          }}
-        />
-      );
-    });
+    let bgColor = "#d1d5db"; // เทา = ยังไม่ถึง
+    if (currentIndex > stepIndex) bgColor = "#4ade80"; // เขียว = เสร็จแล้ว
+    else if (currentIndex === stepIndex) bgColor = "#facc15"; // เหลือง = กำลังทำ
+
+    return (
+      <div
+        key={step}
+        style={{
+          width: "80px",
+          height: "24px",
+          backgroundColor: bgColor,
+          borderRadius: "4px",
+          marginRight: "4px",
+        }}
+        title={step}
+      />
+    );
   };
 
   return (
     <div style={{ maxWidth: "1000px", margin: "auto", padding: "20px", fontFamily: "Segoe UI, sans-serif" }}>
-      <h2 style={{ fontSize: "1.6rem", marginBottom: "20px" }}>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
+      <h2>🏠 <strong>หน้าหลัก – ภาพรวมการทำงาน</strong></h2>
 
-      <h3>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
-
-      {/* หัวตาราง */}
-      <div style={{ display: "flex", fontWeight: "bold", marginTop: "10px", marginLeft: "90px" }}>
+      <h3 style={{ marginTop: "20px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
+      <div style={{ display: "flex", marginBottom: "8px", marginLeft: "150px", gap: "8px" }}>
         {departments.map((dept) => (
-          <div key={dept} style={{ flex: 1, textAlign: "center" }}>{dept}</div>
+          <strong key={dept} style={{ width: "80px", textAlign: "center" }}>{dept}</strong>
         ))}
       </div>
 
-      {/* Progress Bars */}
       {allData.map((item) => (
-        <div key={item.id} style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}>
-          <div style={{ width: "90px", fontSize: "14px" }}>📄 {item.BatchNo}</div>
-          <div style={{ display: "flex", flex: 1 }}>{renderProgressBar(item.CurrentStep)}</div>
+        <div key={item.id} style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+          <span style={{ width: "140px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            📄 {item.Product || "-"}
+          </span>
+          <div style={{ display: "flex", gap: "4px" }}>
+            {departments.map((dept) => renderProgressBar(dept, item.CurrentStep))}
+          </div>
         </div>
       ))}
 
-      {/* สรุปสถานะงานรายแผนก */}
       <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
@@ -137,7 +142,6 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* ปุ่ม Export + รายละเอียด */}
       <div style={{ marginTop: "20px" }}>
         <button
           onClick={handleExport}
@@ -165,12 +169,68 @@ export default function Home() {
             cursor: "pointer",
           }}
         >
-          🔍 รายละเอียด
+          🔍 ดูรายละเอียด
         </button>
       </div>
 
-      {/* รายการงานทั้งหมด (ซ่อนไว้ได้ตามที่ต้องการ) */}
-      {/* เพิ่มส่วนนี้หากต้องการให้โชว์รายละเอียดแบบ toggle */}
+      {showDetails && (
+        <div style={{ marginTop: "30px" }}>
+          <h3>📋 รายการงานทั้งหมด</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#f3f4f6" }}>
+                <th style={thStyle}>Batch No</th>
+                <th style={thStyle}>Product</th>
+                <th style={thStyle}>Current Step</th>
+                <th style={thStyle}>Customer</th>
+                <th style={thStyle}>Volume</th>
+                <th style={thStyle}>Delivery Date</th>
+                {(user?.role === "admin" || user?.role === "sales") && <th style={thStyle}>ลบ</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {allData.map((item) => (
+                <tr key={item.id}>
+                  <td style={tdStyle}>{item.BatchNo}</td>
+                  <td style={tdStyle}>{item.Product}</td>
+                  <td style={tdStyle}>{item.CurrentStep}</td>
+                  <td style={tdStyle}>{item.Customer || "-"}</td>
+                  <td style={tdStyle}>{item.Volume || "-"}</td>
+                  <td style={tdStyle}>{item.DeliveryDate || "-"}</td>
+                  {(user?.role === "admin" || user?.role === "sales") && (
+                    <td style={tdStyle}>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        style={{
+                          backgroundColor: "red",
+                          color: "#fff",
+                          border: "none",
+                          padding: "5px 10px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ลบ
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
+
+const thStyle = {
+  padding: "8px",
+  border: "1px solid #ddd",
+  textAlign: "left",
+};
+
+const tdStyle = {
+  padding: "8px",
+  border: "1px solid #ddd",
+};
