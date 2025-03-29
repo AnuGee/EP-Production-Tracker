@@ -116,15 +116,24 @@ export default function Home() {
     }
   };
 
+  const thStyle = {
+    padding: "8px",
+    border: "1px solid #ddd",
+    textAlign: "left",
+  };
+
+  const tdStyle = {
+    padding: "8px",
+    border: "1px solid #ddd",
+  };
+
   return (
     <div style={{ maxWidth: "1200px", margin: "auto", padding: "20px" }}>
       <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
-      {/* 🔎 Filter ปี + เดือน */}
       <div style={{ margin: "16px 0", display: "flex", flexWrap: "wrap", gap: "20px" }}>
         <label>
-        <label>
-          📆 เลือกปี:{" "}
+          📆 เลือกปี: {" "}
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
@@ -140,7 +149,7 @@ export default function Home() {
         </label>
 
         <label>
-          🗓 เลือกเดือน:{" "}
+          🗓 เลือกเดือน: {" "}
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -163,7 +172,6 @@ export default function Home() {
         </label>
       </div>
 
-      {/* 🔴 Progress Bar */}
       <h3 style={{ marginTop: "30px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
       <div style={{ overflowX: "auto" }}>
         <div
@@ -217,7 +225,6 @@ export default function Home() {
         })}
       </div>
 
-      {/* 📊 Chart */}
       <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
@@ -231,7 +238,6 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* 📋 ตารางรายการ */}
       <div style={{ marginTop: "30px" }}>
         <h3>📋 รายการงานทั้งหมด</h3>
         <button
@@ -305,14 +311,3 @@ export default function Home() {
     </div>
   );
 }
-
-const thStyle = {
-  padding: "8px",
-  border: "1px solid #ddd",
-  textAlign: "left",
-};
-
-const tdStyle = {
-  padding: "8px",
-  border: "1px solid #ddd",
-};
