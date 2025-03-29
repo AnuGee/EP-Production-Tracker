@@ -123,22 +123,21 @@ export default function Home() {
       {/* 🔎 Filter ปี + เดือน */}
       <div style={{ margin: "16px 0", display: "flex", flexWrap: "wrap", gap: "20px" }}>
         <label>
-<label>
-  📆 เลือกปี:{" "}
-  <select
-    value={selectedYear}
-    onChange={(e) => setSelectedYear(e.target.value)}
-    style={{ padding: "6px 12px", borderRadius: "6px" }}
-  >
-    <option value="all">ทั้งหมด</option>
-    <option value="2025">2025</option>
-    <option value="2026">2026</option>
-    <option value="2027">2027</option>
-    <option value="2028">2028</option>
-    <option value="2029">2029</option>
-  </select>
-</label>
-
+        <label>
+          📆 เลือกปี:{" "}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            style={{ padding: "6px 12px", borderRadius: "6px" }}
+          >
+            <option value="all">ทั้งหมด</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2029">2029</option>
+          </select>
+        </label>
 
         <label>
           🗓 เลือกเดือน:{" "}
