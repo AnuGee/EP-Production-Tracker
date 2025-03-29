@@ -121,7 +121,7 @@ export default function Home() {
       <h2>🏠 หน้าหลัก – ภาพรวมการทำงาน</h2>
 
       {/* 🔎 Filter ปี + เดือน */}
-      <div style={{ margin: "16px 0", display: "flex", gap: "20px" }}>
+      <div style={{ margin: "16px 0", display: "flex", flexWrap: "wrap", gap: "20px" }}>
         <label>
           📆 เลือกปี:{" "}
           <select
@@ -161,58 +161,61 @@ export default function Home() {
         </label>
       </div>
 
-      {/* 🔴 ความคืบหน้า */}
+      {/* 🔴 Progress Bar */}
       <h3 style={{ marginTop: "30px" }}>🔴 ความคืบหน้าของงานแต่ละชุด</h3>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "200px repeat(5, 110px)",
-          gap: "10px",
-          fontWeight: "bold",
-          marginTop: "10px",
-        }}
-      >
-        <div>Product</div>
-        {departments.map((dept) => (
-          <div key={dept}>{dept}</div>
-        ))}
+      <div style={{ overflowX: "auto" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "200px repeat(5, 110px)",
+            gap: "10px",
+            fontWeight: "bold",
+            minWidth: "800px",
+          }}
+        >
+          <div>Product</div>
+          {departments.map((dept) => (
+            <div key={dept}>{dept}</div>
+          ))}
+        </div>
+
+        {filteredData.map((item) => {
+          const currentIndex = departments.indexOf(item.CurrentStep);
+          return (
+            <div
+              key={item.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "200px repeat(5, 110px)",
+                gap: "10px",
+                marginTop: "6px",
+                alignItems: "center",
+                minWidth: "800px",
+              }}
+            >
+              <div style={{ fontSize: "14px" }}>📄 {item.Product || "-"}</div>
+              {departments.map((dept, index) => {
+                let color = "#d1d5db";
+                if (index < currentIndex) color = "#4ade80";
+                else if (index === currentIndex) color = "#facc15";
+
+                return (
+                  <div
+                    key={dept}
+                    style={{
+                      height: "20px",
+                      backgroundColor: color,
+                      borderRadius: "4px",
+                    }}
+                  ></div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
 
-      {filteredData.map((item) => {
-        const currentIndex = departments.indexOf(item.CurrentStep);
-        return (
-          <div
-            key={item.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "200px repeat(5, 110px)",
-              gap: "10px",
-              marginTop: "6px",
-              alignItems: "center",
-            }}
-          >
-            <div style={{ fontSize: "14px" }}>📄 {item.Product || "-"}</div>
-            {departments.map((dept, index) => {
-              let color = "#d1d5db";
-              if (index < currentIndex) color = "#4ade80";
-              else if (index === currentIndex) color = "#facc15";
-
-              return (
-                <div
-                  key={dept}
-                  style={{
-                    height: "20px",
-                    backgroundColor: color,
-                    borderRadius: "4px",
-                  }}
-                ></div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-      {/* 📊 กราฟ */}
+      {/* 📊 Chart */}
       <h3 style={{ marginTop: "40px" }}>📊 สรุปสถานะงานรายแผนก</h3>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
@@ -226,7 +229,7 @@ export default function Home() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* 📋 รายการงาน */}
+      {/* 📋 ตารางรายการ */}
       <div style={{ marginTop: "30px" }}>
         <h3>📋 รายการงานทั้งหมด</h3>
         <button
@@ -244,56 +247,58 @@ export default function Home() {
           📥 Export Excel
         </button>
 
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f3f4f6" }}>
-              <th style={thStyle}>Batch No</th>
-              <th style={thStyle}>Product</th>
-              <th style={thStyle}>Current Step</th>
-              <th style={thStyle}>Customer</th>
-              <th style={thStyle}>Volume</th>
-              <th style={thStyle}>Delivery Date</th>
-              {(user?.role === "admin" || user?.role === "sales") && (
-                <th style={thStyle}>ลบ</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map((item) => (
-              <tr key={item.id}>
-                <td style={tdStyle}>{item.BatchNo}</td>
-                <td style={tdStyle}>{item.Product}</td>
-                <td style={tdStyle}>{item.CurrentStep}</td>
-                <td style={tdStyle}>{item.Customer || "-"}</td>
-                <td style={tdStyle}>{item.Volume || "-"}</td>
-                <td style={tdStyle}>
-                  {item.DeliveryDate
-                    ? typeof item.DeliveryDate === "object"
-                      ? new Date(item.DeliveryDate.seconds * 1000).toLocaleDateString()
-                      : item.DeliveryDate
-                    : "-"}
-                </td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#f3f4f6" }}>
+                <th style={thStyle}>Batch No</th>
+                <th style={thStyle}>Product</th>
+                <th style={thStyle}>Current Step</th>
+                <th style={thStyle}>Customer</th>
+                <th style={thStyle}>Volume</th>
+                <th style={thStyle}>Delivery Date</th>
                 {(user?.role === "admin" || user?.role === "sales") && (
-                  <td style={tdStyle}>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      style={{
-                        backgroundColor: "red",
-                        color: "#fff",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      ลบ
-                    </button>
-                  </td>
+                  <th style={thStyle}>ลบ</th>
                 )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredData.map((item) => (
+                <tr key={item.id}>
+                  <td style={tdStyle}>{item.BatchNo}</td>
+                  <td style={tdStyle}>{item.Product}</td>
+                  <td style={tdStyle}>{item.CurrentStep}</td>
+                  <td style={tdStyle}>{item.Customer || "-"}</td>
+                  <td style={tdStyle}>{item.Volume || "-"}</td>
+                  <td style={tdStyle}>
+                    {item.DeliveryDate
+                      ? typeof item.DeliveryDate === "object"
+                        ? new Date(item.DeliveryDate.seconds * 1000).toLocaleDateString()
+                        : item.DeliveryDate
+                      : "-"}
+                  </td>
+                  {(user?.role === "admin" || user?.role === "sales") && (
+                    <td style={tdStyle}>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        style={{
+                          backgroundColor: "red",
+                          color: "#fff",
+                          border: "none",
+                          padding: "5px 10px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ลบ
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
