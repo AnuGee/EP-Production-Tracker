@@ -1,6 +1,3 @@
-export default function Home() {
-  console.log("🟢 Home loaded");
-  const [jobs, setJobs] = useState([]);
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
 import {
@@ -12,6 +9,7 @@ import {
 } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
+// ค่าคงที่
 const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 const statusOptions = {
   Warehouse: ["ยังไม่เบิก", "Pending", "เบิกเสร็จ"],
@@ -31,6 +29,7 @@ const getNextStep = (current) => {
 };
 
 export default function Home() {
+  console.log("🟢 Home loaded");
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
@@ -41,14 +40,13 @@ export default function Home() {
     const querySnapshot = await getDocs(collection(db, "production_workflow"));
     const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
-    console.log("🔥 jobs:", data); // ✅ เพิ่มตรงนี้เลย
+    console.log("🔥 jobs:", data);
   };
 
   const handleStatusChange = async (job, field, value) => {
     const jobRef = doc(db, "production_workflow", job.id);
     const newStatus = { ...job.status, [field]: value };
 
-    // Logic to check if can proceed
     let shouldAdvance = false;
     if (job.currentStep === "Warehouse" && value === "เบิกเสร็จ") {
       shouldAdvance = true;
@@ -91,11 +89,8 @@ export default function Home() {
   return (
     <div style={{ padding: 20 }}>
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
-
-      {/* ปุ่ม export */}
       <button onClick={exportToExcel}>📤 Export Excel</button>
 
-      {/* ตารางแสดงงาน */}
       <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
         <thead>
           <tr>
@@ -152,9 +147,9 @@ export default function Home() {
                     </>
                   ) : (
                     <select
-                      value={status[current.toLowerCase()] || ""}
+                      value={status[current?.toLowerCase()] || ""}
                       onChange={(e) =>
-                        handleStatusChange(job, current.toLowerCase(), e.target.value)
+                        handleStatusChange(job, current?.toLowerCase(), e.target.value)
                       }
                     >
                       <option value="">--เลือก--</option>
