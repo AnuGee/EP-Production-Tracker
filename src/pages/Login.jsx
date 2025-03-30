@@ -1,10 +1,9 @@
-// Login.jsx แบบใหม่ – ใช้ username และ password จาก Firestore (100% ชัวร์)
-
+# แก้ Login.jsx ให้ใช้ import db จาก "../../firebase" แทน getFirestore()
+fixed_login_code = """\
 import React, { useState } from "react";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
-
-const db = getFirestore();
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -79,3 +78,11 @@ export default function Login() {
     </div>
   );
 }
+"""
+
+# Save patched Login.jsx
+fixed_login_path = "/mnt/data/Login_fixed_import.jsx"
+with open(fixed_login_path, "w", encoding="utf-8") as f:
+    f.write(fixed_login_code)
+
+fixed_login_path
