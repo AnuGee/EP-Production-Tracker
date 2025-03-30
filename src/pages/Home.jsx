@@ -1,3 +1,6 @@
+export default function Home() {
+  console.log("🟢 Home loaded");
+  const [jobs, setJobs] = useState([]);
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
 import {
