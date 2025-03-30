@@ -1,15 +1,13 @@
-// โค้ดใหม่นี้จะรวม Status ของแต่ละแผนกไว้ในตารางรายการงานทั้งหมด
-// โดยเพิ่มคอลัมน์ "Status" ถัดจาก "Current Step"
-// และแสดงสถานะย่อยเฉพาะของแผนกนั้น หากยังไม่ข้ามไปแผนกถัดไป
-
+# เตรียม Home.jsx เวอร์ชันที่แก้ getFirestore() แล้ว
+fixed_home_code = """\
 import React, { useEffect, useState } from "react";
 import {
-  getFirestore,
   collection,
   getDocs,
   deleteDoc,
   doc,
 } from "firebase/firestore";
+import { db } from "../../firebase";
 import {
   BarChart,
   Bar,
@@ -20,8 +18,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import * as XLSX from "xlsx";
-
-const db = getFirestore();
 
 export default function Home() {
   const [allData, setAllData] = useState([]);
@@ -221,3 +217,11 @@ export default function Home() {
     </div>
   );
 }
+"""
+
+# Save patched Home.jsx
+fixed_home_path = "/mnt/data/Home_fixed_import.jsx"
+with open(fixed_home_path, "w", encoding="utf-8") as f:
+    f.write(fixed_home_code)
+
+fixed_home_path
