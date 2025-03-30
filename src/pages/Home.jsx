@@ -1,4 +1,4 @@
-# เตรียม Home.jsx เวอร์ชันที่แก้ getFirestore() แล้ว
+// เตรียม Home.jsx เวอร์ชันที่แก้ getFirestore() แล้ว
 fixed_home_code = """\
 import React, { useEffect, useState } from "react";
 import {
@@ -219,7 +219,7 @@ export default function Home() {
 }
 """
 
-# Save patched Home.jsx
+// Save patched Home.jsx
 fixed_home_path = "/mnt/data/Home_fixed_import.jsx"
 with open(fixed_home_path, "w", encoding="utf-8") as f:
     f.write(fixed_home_code)
