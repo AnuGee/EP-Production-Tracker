@@ -98,14 +98,13 @@ export default function Home() {
         📤 Export Excel
       </button>
 
-      {showDetails && (
-        <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
+<table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
   <thead>
     <tr>
       <th>Batch No</th>
       <th>Product</th>
       <th>Current Step</th>
-      <th>Status</th> {/* ✅ เพิ่มคอลัมน์นี้ */}
+      <th>Status</th>
       <th>Customer</th>
       <th>Volume</th>
       <th>Delivery Date</th>
@@ -122,50 +121,7 @@ export default function Home() {
           <td>{job.product_name}</td>
           <td>{current}</td>
           <td>
-            {current === "QC" ? (
-              <>
-                <div>
-                  ตรวจปล่อย:{" "}
-                  <select
-                    value={status.qc_inspection || ""}
-                    onChange={(e) =>
-                      handleStatusChange(job, "qc_inspection", e.target.value)
-                    }
-                  >
-                    <option value="">--เลือก--</option>
-                    {statusOptions.QC.qc_inspection.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  COA & Sample:{" "}
-                  <select
-                    value={status.qc_coa || ""}
-                    onChange={(e) =>
-                      handleStatusChange(job, "qc_coa", e.target.value)
-                    }
-                  >
-                    <option value="">--เลือก--</option>
-                    {statusOptions.QC.qc_coa.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <select
-                value={status[current.toLowerCase()] || ""}
-                onChange={(e) =>
-                  handleStatusChange(job, current.toLowerCase(), e.target.value)
-                }
-              >
-                <option value="">--เลือก--</option>
-                {statusOptions[current]?.map?.((opt) => (
-                  <option key={opt}>{opt}</option>
-                ))}
-              </select>
-            )}
+            {/* status dropdown ตาม currentStep */}
           </td>
           <td>{job.customer || "-"}</td>
           <td>{job.volume || "-"}</td>
