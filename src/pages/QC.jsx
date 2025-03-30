@@ -13,7 +13,7 @@ import {
 
 import { db } from "../firebase";
 
-export default function Account() {
+export default function QC() {
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function Account() {
   }, []);
 
   const loadJobs = async () => {
-    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "Account"));
+    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "QC"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
@@ -36,21 +36,26 @@ export default function Account() {
   const handleUpdate = async (job) => {
     const jobRef = doc(db, "production_workflow", job.id);
 
-    const nextStep = job.Account_Status === "Invoice ออกแล้ว" ? "Completed" : "Account";
+    const isReady =
+      job.QC_Check === "ตรวจผ่านแล้ว" &&
+      job.COA_Sample === "เตรียมพร้อมแล้ว";
+
+    const nextStep = isReady ? "Account" : "QC";
 
     await updateDoc(jobRef, {
-      Account_Status: job.Account_Status || "",
-      Timestamp_Account: serverTimestamp(),
+      QC_Check: job.QC_Check || "",
+      COA_Sample: job.COA_Sample || "",
+      Timestamp_QC: serverTimestamp(),
       CurrentStep: nextStep,
     });
 
-    alert("อัปเดตสำเร็จ ✅");
+    alert("อัปเดต QC สำเร็จ ✅");
     loadJobs();
   };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Segoe UI" }}>
-      <h2>💵 Account - สถานะการออกใบแจ้งหนี้</h2>
+      <h2>🧬 Quality Control - ตรวจสอบคุณภาพ</h2>
 
       {jobs.length === 0 && <p>ไม่มีงานในขั้นตอนนี้</p>}
 
@@ -59,15 +64,29 @@ export default function Account() {
           <p><strong>Product:</strong> {job.Product}</p>
           <p><strong>Customer:</strong> {job.Customer}</p>
 
-          <label style={labelStyle}>🧾 สถานะใบแจ้งหนี้</label>
+          <label style={labelStyle}>🔍 ตรวจปล่อย</label>
           <select
-            value={job.Account_Status || ""}
-            onChange={(e) => handleChange(job.id, "Account_Status", e.target.value)}
+            value={job.QC_Check || ""}
+            onChange={(e) => handleChange(job.id, "QC_Check", e.target.value)}
             style={inputStyle}
           >
             <option value="">-- เลือก --</option>
-            <option value="Invoice ยังไม่ออก">Invoice ยังไม่ออก</option>
-            <option value="Invoice ออกแล้ว">Invoice ออกแล้ว</option>
+            <option value="ยังไม่ได้ตรวจ">ยังไม่ได้ตรวจ</option>
+            <option value="กำลังตรวจ (รอปรับ)">กำลังตรวจ (รอปรับ)</option>
+            <option value="กำลังตรวจ (Hold)">กำลังตรวจ (Hold)</option>
+            <option value="ตรวจผ่านแล้ว">ตรวจผ่านแล้ว</option>
+          </select>
+
+          <label style={labelStyle}>📄 COA & Sample</label>
+          <select
+            value={job.COA_Sample || ""}
+            onChange={(e) => handleChange(job.id, "COA_Sample", e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">-- เลือก --</option>
+            <option value="ยังไม่เตรียม">ยังไม่เตรียม</option>
+            <option value="กำลังเตรียม">กำลังเตรียม</option>
+            <option value="เตรียมพร้อมแล้ว">เตรียมพร้อมแล้ว</option>
           </select>
 
           <button onClick={() => handleUpdate(job)} style={buttonStyle}>

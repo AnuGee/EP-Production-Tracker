@@ -13,7 +13,7 @@ import {
 
 import { db } from "../firebase";
 
-export default function Account() {
+export default function Production() {
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function Account() {
   }, []);
 
   const loadJobs = async () => {
-    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "Account"));
+    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "Production"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
@@ -36,21 +36,22 @@ export default function Account() {
   const handleUpdate = async (job) => {
     const jobRef = doc(db, "production_workflow", job.id);
 
-    const nextStep = job.Account_Status === "Invoice ออกแล้ว" ? "Completed" : "Account";
+    const nextStep = job.Production_Status === "ผลิตเสร็จ" ? "QC" : "Production";
 
     await updateDoc(jobRef, {
-      Account_Status: job.Account_Status || "",
-      Timestamp_Account: serverTimestamp(),
+      BatchNo: job.BatchNo || "",
+      Production_Status: job.Production_Status || "",
+      Timestamp_Production: serverTimestamp(),
       CurrentStep: nextStep,
     });
 
-    alert("อัปเดตสำเร็จ ✅");
+    alert("อัปเดตเรียบร้อย ✅");
     loadJobs();
   };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Segoe UI" }}>
-      <h2>💵 Account - สถานะการออกใบแจ้งหนี้</h2>
+      <h2>🧪 Production - สถานะการผลิต</h2>
 
       {jobs.length === 0 && <p>ไม่มีงานในขั้นตอนนี้</p>}
 
@@ -59,18 +60,27 @@ export default function Account() {
           <p><strong>Product:</strong> {job.Product}</p>
           <p><strong>Customer:</strong> {job.Customer}</p>
 
-          <label style={labelStyle}>🧾 สถานะใบแจ้งหนี้</label>
+          <label style={labelStyle}>🔢 Batch Number</label>
+          <input
+            value={job.BatchNo || ""}
+            onChange={(e) => handleChange(job.id, "BatchNo", e.target.value)}
+            style={inputStyle}
+          />
+
+          <label style={labelStyle}>⚙️ สถานะการผลิต</label>
           <select
-            value={job.Account_Status || ""}
-            onChange={(e) => handleChange(job.id, "Account_Status", e.target.value)}
+            value={job.Production_Status || ""}
+            onChange={(e) => handleChange(job.id, "Production_Status", e.target.value)}
             style={inputStyle}
           >
             <option value="">-- เลือก --</option>
-            <option value="Invoice ยังไม่ออก">Invoice ยังไม่ออก</option>
-            <option value="Invoice ออกแล้ว">Invoice ออกแล้ว</option>
+            <option value="ยังไม่เริ่มผลิต">ยังไม่เริ่มผลิต</option>
+            <option value="กำลังผลิต">กำลังผลิต</option>
+            <option value="กำลังบรรจุ">กำลังบรรจุ</option>
+            <option value="ผลิตเสร็จ">ผลิตเสร็จ</option>
           </select>
 
-          <button onClick={() => handleUpdate(job)} style={buttonStyle}>
+          <button style={buttonStyle} onClick={() => handleUpdate(job)}>
             ✅ บันทึกสถานะ
           </button>
         </div>
