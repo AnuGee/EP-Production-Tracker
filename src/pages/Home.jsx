@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
-import {
-  collection,
-  getDocs,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
 import { db } from "../../firebase";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import {
   BarChart,
   Bar,
