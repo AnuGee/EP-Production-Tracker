@@ -29,7 +29,6 @@ const getNextStep = (current) => {
 
 export default function Home() {
   const [jobs, setJobs] = useState([]);
-  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -89,54 +88,91 @@ export default function Home() {
     <div style={{ padding: 20 }}>
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
 
-      {/* กราฟและ Progress สามารถใส่เพิ่มตรงนี้ได้ */}
+      {/* ปุ่ม export */}
+      <button onClick={exportToExcel}>📤 Export Excel</button>
 
-      <button onClick={() => setShowDetails(!showDetails)}>
-        🔍 รายละเอียด
-      </button>
-      <button onClick={exportToExcel} style={{ marginLeft: 10 }}>
-        📤 Export Excel
-      </button>
-
-<table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
-  <thead>
-    <tr>
-      <th>Batch No</th>
-      <th>Product</th>
-      <th>Current Step</th>
-      <th>Status</th>
-      <th>Customer</th>
-      <th>Volume</th>
-      <th>Delivery Date</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {jobs.map((job) => {
-      const current = job.currentStep;
-      const status = job.status || {};
-      return (
-        <tr key={job.id}>
-          <td>{job.batch_no || "N/A"}</td>
-          <td>{job.product_name}</td>
-          <td>{current}</td>
-          <td>
-            {/* status dropdown ตาม currentStep */}
-          </td>
-          <td>{job.customer || "-"}</td>
-          <td>{job.volume || "-"}</td>
-          <td>{job.delivery_date || "-"}</td>
-          <td>
-            {(current === "Sales" || current === "Admin") && (
-              <button onClick={() => handleDelete(job.id)}>🗑 ลบ</button>
-            )}
-          </td>
-        </tr>
-      );
-    })}
-  </tbody>
-</table>
-      )}
+      {/* ตารางแสดงงาน */}
+      <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
+        <thead>
+          <tr>
+            <th>Batch No</th>
+            <th>Product</th>
+            <th>Current Step</th>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Volume</th>
+            <th>Delivery Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((job) => {
+            const current = job.currentStep;
+            const status = job.status || {};
+            return (
+              <tr key={job.id}>
+                <td>{job.batch_no || "N/A"}</td>
+                <td>{job.product_name}</td>
+                <td>{current}</td>
+                <td>
+                  {current === "QC" ? (
+                    <>
+                      <div>
+                        ตรวจปล่อย:{" "}
+                        <select
+                          value={status.qc_inspection || ""}
+                          onChange={(e) =>
+                            handleStatusChange(job, "qc_inspection", e.target.value)
+                          }
+                        >
+                          <option value="">--เลือก--</option>
+                          {statusOptions.QC.qc_inspection.map((opt) => (
+                            <option key={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        COA & Sample:{" "}
+                        <select
+                          value={status.qc_coa || ""}
+                          onChange={(e) =>
+                            handleStatusChange(job, "qc_coa", e.target.value)
+                          }
+                        >
+                          <option value="">--เลือก--</option>
+                          {statusOptions.QC.qc_coa.map((opt) => (
+                            <option key={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <select
+                      value={status[current.toLowerCase()] || ""}
+                      onChange={(e) =>
+                        handleStatusChange(job, current.toLowerCase(), e.target.value)
+                      }
+                    >
+                      <option value="">--เลือก--</option>
+                      {statusOptions[current]?.map?.((opt) => (
+                        <option key={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td>{job.customer || "-"}</td>
+                <td>{job.volume || "-"}</td>
+                <td>{job.delivery_date || "-"}</td>
+                <td>
+                  {(current === "Sales" || current === "Admin") && (
+                    <button onClick={() => handleDelete(job.id)}>🗑 ลบ</button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
