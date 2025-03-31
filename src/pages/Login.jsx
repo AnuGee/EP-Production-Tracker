@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { db } from "../firebase";
+import { db } from "../../firebase"; // ✅ ใช้ path นี้อันเดียว
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
