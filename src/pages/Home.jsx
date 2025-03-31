@@ -9,7 +9,6 @@ import {
 } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
-// ค่าคงที่
 const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 const statusOptions = {
   Warehouse: ["ยังไม่เบิก", "Pending", "เบิกเสร็จ"],
@@ -32,7 +31,6 @@ export default function Home() {
     const querySnapshot = await getDocs(collection(db, "production_workflow"));
     const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
-    console.log("🔥 jobs:", data);
   };
 
   const handleStatusChange = async (job, field, value) => {
@@ -40,7 +38,6 @@ export default function Home() {
     const newStatus = { ...job.status, [field]: value };
     let nextStep = job.currentStep;
 
-    // Logic เปลี่ยน currentStep ตาม workflow ใหม่
     if (job.currentStep === "Warehouse" && newStatus.warehouse === "เบิกเสร็จ") {
       nextStep = "Production";
     }
@@ -51,7 +48,7 @@ export default function Home() {
       } else if (newStatus.production === "ผลิตเสร็จ") {
         nextStep = "Account";
       } else {
-        nextStep = "Production"; // ยังคงอยู่
+        nextStep = "Production";
       }
     }
 
@@ -60,15 +57,14 @@ export default function Home() {
       newStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
       newStatus.qc_coa === "เตรียมพร้อมแล้ว"
     ) {
-      nextStep = "Production"; // กลับไป Production
+      nextStep = "Production";
     }
 
     if (job.currentStep === "Account") {
       if (newStatus.account === "Invoice ออกแล้ว") {
         newStatus.complete = true;
-        // nextStep ค้างที่ Account หรือ mark จบงานก็ได้
       } else {
-        nextStep = "Account"; // ยังคงอยู่
+        nextStep = "Account";
       }
     }
 
@@ -122,10 +118,43 @@ export default function Home() {
                 <td>{current || "-"}</td>
 
                 <td>
-                  {current === "QC" ? (
+                  {current === "Warehouse" ? (
                     <>
                       <div>
-                        ตรวจปล่อย:{" "}
+                        Stock:
+                        <select
+                          value={status.stock || ""}
+                          onChange={(e) =>
+                            handleStatusChange(job, "stock", e.target.value)
+                          }
+                        >
+                          <option value="">--เลือก--</option>
+                          <option value="มี">มี</option>
+                          <option value="ไม่มี">ไม่มี</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        Step:
+                        <select
+                          value={status.warehouse || ""}
+                          disabled={status.stock !== "มี"}
+                          style={{ backgroundColor: status.stock === "มี" ? "white" : "#eee" }}
+                          onChange={(e) =>
+                            handleStatusChange(job, "warehouse", e.target.value)
+                          }
+                        >
+                          <option value="">--เลือก--</option>
+                          <option value="ยังไม่เบิก">ยังไม่เบิก</option>
+                          <option value="Pending">Pending</option>
+                          <option value="เบิกเสร็จ">เบิกเสร็จ</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : current === "QC" ? (
+                    <>
+                      <div>
+                        ตรวจปล่อย:
                         <select
                           value={status.qc_inspection || ""}
                           onChange={(e) =>
@@ -139,7 +168,7 @@ export default function Home() {
                         </select>
                       </div>
                       <div>
-                        COA & Sample:{" "}
+                        COA & Sample:
                         <select
                           value={status.qc_coa || ""}
                           onChange={(e) =>
