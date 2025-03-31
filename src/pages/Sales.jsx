@@ -1,7 +1,6 @@
 import { db } from "../firebase";
 import React, { useState } from "react";
 
-import { db } from "../firebase";
 
 export default function Sales() {
   const [product, setProduct] = useState("");

@@ -6,7 +6,6 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { db } from "../firebase";
 import * as XLSX from "xlsx";
 import {
   BarChart,

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
 
 const steps = ["Sales", "Warehouse", "Production", "QC", "Account"];
 const statusFields = {

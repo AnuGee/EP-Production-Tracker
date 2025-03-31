@@ -1,6 +1,5 @@
 import { db } from "../firebase";
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
 import {
   collection,
   getDocs,
@@ -11,7 +10,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-import { db } from "../firebase";
 
 export default function Account() {
   const [jobs, setJobs] = useState([]);

@@ -1,6 +1,5 @@
 import { db } from "../firebase";
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
 import {
   collection,
   getDocs,
@@ -9,7 +8,6 @@ import {
   Timestamp,
 } from "firebase/firestore";
 
-import { db } from "../firebase";
 
 export default function History() {
   const [completedJobs, setCompletedJobs] = useState([]);
