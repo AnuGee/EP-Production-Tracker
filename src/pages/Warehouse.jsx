@@ -10,7 +10,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-
 export default function Warehouse() {
   const [jobs, setJobs] = useState([]);
 
@@ -30,18 +29,14 @@ export default function Warehouse() {
 
     let nextStep = "Warehouse";
 
-    // ✅ ถ้า Stock = มี → ข้ามไป QC ทันที
     if (job.Stock === "มี") {
       nextStep = "QC";
-    }
-    // ✅ ถ้า Stock = ไม่มี → ต้องเป็น "เบิกเสร็จ" ถึงจะข้ามไป Production
-    else if (job.Stock === "ไม่มี" && job.Warehouse_Step === "เบิกเสร็จ") {
+    } else if (job.Stock === "ไม่มี" && job.Warehouse_Step === "เบิกเสร็จ") {
       nextStep = "Production";
     }
 
     await updateDoc(jobRef, {
       Stock: job.Stock,
-      BatchNo: job.BatchNo || "",
       Warehouse_Step: job.Warehouse_Step || "",
       Warehouse_Status: "Completed",
       Timestamp_Warehouse: serverTimestamp(),
@@ -65,7 +60,7 @@ export default function Warehouse() {
       {jobs.length === 0 && <p>ไม่มีงานที่รอในขั้นตอนนี้</p>}
 
       {jobs.map((job) => {
-        const disableFields = job.Stock === "มี";
+        const disableStep = job.Stock !== "มี";
         return (
           <div key={job.id} style={cardStyle}>
             <p><strong>Product:</strong> {job.Product}</p>
@@ -82,26 +77,15 @@ export default function Warehouse() {
               <option value="ไม่มี">ไม่มี</option>
             </select>
 
-            <label style={labelStyle}>🔢 Batch Number</label>
-            <input
-              value={job.BatchNo || ""}
-              onChange={(e) => handleChange(job.id, "BatchNo", e.target.value)}
-              style={{
-                ...inputStyle,
-                backgroundColor: disableFields ? "#e5e7eb" : "#fff",
-              }}
-              disabled={disableFields}
-            />
-
             <label style={labelStyle}>⚙️ Step</label>
             <select
               value={job.Warehouse_Step || ""}
               onChange={(e) => handleChange(job.id, "Warehouse_Step", e.target.value)}
               style={{
                 ...inputStyle,
-                backgroundColor: disableFields ? "#e5e7eb" : "#fff",
+                backgroundColor: disableStep ? "#e5e7eb" : "#fff",
               }}
-              disabled={disableFields}
+              disabled={disableStep}
             >
               <option value="">-- เลือก --</option>
               <option value="ยังไม่เบิก">ยังไม่เบิก</option>
@@ -122,7 +106,6 @@ export default function Warehouse() {
   );
 }
 
-// ✅ Style
 const cardStyle = {
   border: "1px solid #ccc",
   padding: "15px",
