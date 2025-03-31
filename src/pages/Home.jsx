@@ -85,6 +85,29 @@ export default function Home() {
     fetchJobs();
   };
 
+  // ฟังก์ชันสำหรับเลือกค่า status ที่ถูกต้องตาม departmentName
+  const getDepartmentStatus = (job, departmentName) => {
+    if (!job.status) return "";
+    
+    if (departmentName === "Warehouse") {
+      return job.status.warehouse || "";
+    } else if (departmentName === "Production") {
+      return job.status.production || "";
+    } else if (departmentName === "QC") {
+      // QC มีสถานะแยก 2 ส่วน
+      return {
+        qc_inspection: job.status.qc_inspection || "",
+        qc_coa: job.status.qc_coa || ""
+      };
+    } else if (departmentName === "Account") {
+      return job.status.account || "";
+    } else if (departmentName === "Sales") {
+      return job.status.sales || "";
+    }
+    
+    return "";
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
@@ -96,6 +119,7 @@ export default function Home() {
             <th>Batch No</th>
             <th>Product</th>
             <th>Current Step</th>
+            <th>Status</th>
             <th>Update Status</th>
             <th>สถานะรวม</th>
             <th>Customer</th>
@@ -108,11 +132,23 @@ export default function Home() {
           {jobs.map((job) => {
             const current = job.currentStep;
             const status = job.status || {};
+            const currentStatus = getDepartmentStatus(job, current);
+            
             return (
               <tr key={job.id}>
                 <td>{job.batch_no || "N/A"}</td>
                 <td>{job.product_name || job.Product || "-"}</td>
                 <td>{current || "-"}</td>
+                
+                {/* แสดงสถานะปัจจุบัน */}
+                <td>
+                  {current === "QC" 
+                    ? <>
+                        <div>ตรวจปล่อย: {status.qc_inspection || "-"}</div>
+                        <div>COA & Sample: {status.qc_coa || "-"}</div>
+                      </>
+                    : status[current?.toLowerCase()] || "-"}
+                </td>
 
                 {/* ปรับสถานะแผนกปัจจุบัน */}
                 <td>
