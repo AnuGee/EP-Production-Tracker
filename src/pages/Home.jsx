@@ -1,122 +1,177 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  deleteDoc
+} from "firebase/firestore";
 import * as XLSX from "xlsx";
 
-function Home({ userRole }) {
+// ค่าคงที่
+const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
+const statusOptions = {
+  Warehouse: ["ยังไม่เบิก", "Pending", "เบิกเสร็จ"],
+  Production: ["ยังไม่เริ่มผลิต", "กำลังผลิต", "กำลังบรรจุ", "ผลิตเสร็จ"],
+  QC: {
+    qc_inspection: ["ยังไม่ได้ตรวจ", "กำลังตรวจ (รอปรับ)", "กำลังตรวจ (Hold)", "ตรวจผ่านแล้ว"],
+    qc_coa: ["ยังไม่เตรียม", "กำลังเตรียม", "เตรียมพร้อมแล้ว"]
+  },
+  Account: ["Invoice ยังไม่ออก", "Invoice ออกแล้ว"]
+};
+
+const getNextStep = (current) => {
+  const index = departments.findIndex((d) => d === current);
+  return index !== -1 && index < departments.length - 1
+    ? departments[index + 1]
+    : null;
+};
+
+export default function Home() {
+  console.log("🟢 Home loaded");
   const [jobs, setJobs] = useState([]);
-  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const querySnapshot = await getDocs(collection(db, "production_workflow"));
-      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setJobs(data);
-    };
-    fetchData();
+    fetchJobs();
   }, []);
 
-  const getStatus = (job) => {
-    switch (job.currentStep) {
-      case "Sales":
-        return job.salesStatus || "-";
-      case "Warehouse":
-        return job.warehouseStatus || "-";
-      case "Production":
-        return job.productionStatus || "-";
-      case "QC":
-        return job.qcStatus || "-";
-      case "Account":
-        return job.accountStatus || "-";
-      default:
-        return "-";
-    }
+  const fetchJobs = async () => {
+    const querySnapshot = await getDocs(collection(db, "production_workflow"));
+    const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    setJobs(data);
+    console.log("🔥 jobs:", data);
   };
 
-  const handleExport = () => {
+  const handleStatusChange = async (job, field, value) => {
+    const jobRef = doc(db, "production_workflow", job.id);
+    const newStatus = { ...job.status, [field]: value };
+
+    let shouldAdvance = false;
+    if (job.currentStep === "Warehouse" && value === "เบิกเสร็จ") {
+      shouldAdvance = true;
+    }
+    if (job.currentStep === "Production" && value === "ผลิตเสร็จ") {
+      shouldAdvance = true;
+    }
+    if (
+      job.currentStep === "QC" &&
+      newStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
+      newStatus.qc_coa === "เตรียมพร้อมแล้ว"
+    ) {
+      shouldAdvance = true;
+    }
+    if (job.currentStep === "Account" && value === "Invoice ออกแล้ว") {
+      shouldAdvance = true;
+    }
+
+    const updateData = { status: newStatus };
+    if (shouldAdvance) {
+      updateData.currentStep = getNextStep(job.currentStep);
+    }
+
+    await updateDoc(jobRef, updateData);
+    fetchJobs();
+  };
+
+  const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(jobs);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
-    XLSX.writeFile(workbook, "job_list.xlsx");
+    XLSX.writeFile(workbook, "jobs_export.xlsx");
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("ต้องการลบงานนี้หรือไม่?")) {
-      await deleteDoc(doc(db, "production_workflow", id));
-      setJobs(jobs.filter((job) => job.id !== id));
-    }
+    await deleteDoc(doc(db, "production_workflow", id));
+    fetchJobs();
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">ความคืบหน้าของงานแต่ละชุด</h1>
+    <div style={{ padding: 20 }}>
+      <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
+      <button onClick={exportToExcel}>📤 Export Excel</button>
 
-      <div className="flex justify-between items-center mb-4">
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="bg-blue-500 text-white px-4 py-2 rounded shadow"
-        >
-          {showDetails ? "ซ่อนรายละเอียด" : "🔍 รายละเอียด"}
-        </button>
-        <button
-          onClick={handleExport}
-          className="bg-green-500 text-white px-4 py-2 rounded shadow"
-        >
-          Export Excel
-        </button>
-      </div>
-
-      {showDetails && (
-        <div className="overflow-x-auto border rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-300 border border-gray-300">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border">Product Name</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border">Current Step</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border">Status</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border">Date</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {jobs.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center px-4 py-4 text-gray-500">
-                    ยังไม่มีข้อมูลงานในระบบ
-                  </td>
-                </tr>
-              ) : (
-                jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm text-gray-800 border">{job.productName || "-"}</td>
-                    <td className="px-4 py-2 text-sm text-gray-800 border">{job.currentStep || "-"}</td>
-                    <td className="px-4 py-2 text-sm text-gray-800 border">{getStatus(job)}</td>
-                    <td className="px-4 py-2 text-sm text-gray-600 border">{job.date || "-"}</td>
-                    <td className="px-4 py-2 text-sm border">
-                      <button
-                        className="text-blue-500 hover:underline mr-2 text-sm"
-                        title="รายละเอียด"
-                      >
-                        🔍
-                      </button>
-                      {(userRole === "admin" || userRole === "sales") && (
-                        <button
-                          className="text-red-500 hover:underline text-sm"
-                          onClick={() => handleDelete(job.id)}
+      <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
+        <thead>
+          <tr>
+            <th>Batch No</th>
+            <th>Product</th>
+            <th>Current Step</th>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Volume</th>
+            <th>Delivery Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((job) => {
+            const current = job.currentStep;
+            const status = job.status || {};
+            return (
+              <tr key={job.id}>
+                <td>{job.batch_no || "N/A"}</td>
+                <td>{job.product_name}</td>
+                <td>{current}</td>
+                <td>
+                  {current === "QC" ? (
+                    <>
+                      <div>
+                        ตรวจปล่อย:{" "}
+                        <select
+                          value={status.qc_inspection || ""}
+                          onChange={(e) =>
+                            handleStatusChange(job, "qc_inspection", e.target.value)
+                          }
                         >
-                          ลบ
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                          <option value="">--เลือก--</option>
+                          {statusOptions.QC.qc_inspection.map((opt) => (
+                            <option key={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        COA & Sample:{" "}
+                        <select
+                          value={status.qc_coa || ""}
+                          onChange={(e) =>
+                            handleStatusChange(job, "qc_coa", e.target.value)
+                          }
+                        >
+                          <option value="">--เลือก--</option>
+                          {statusOptions.QC.qc_coa.map((opt) => (
+                            <option key={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <select
+                      value={status[current?.toLowerCase()] || ""}
+                      onChange={(e) =>
+                        handleStatusChange(job, current?.toLowerCase(), e.target.value)
+                      }
+                    >
+                      <option value="">--เลือก--</option>
+                      {statusOptions[current]?.map?.((opt) => (
+                        <option key={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td>{job.customer || "-"}</td>
+                <td>{job.volume || "-"}</td>
+                <td>{job.delivery_date || "-"}</td>
+                <td>
+                  {(current === "Sales" || current === "Admin") && (
+                    <button onClick={() => handleDelete(job.id)}>🗑 ลบ</button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
-
-export default Home;
