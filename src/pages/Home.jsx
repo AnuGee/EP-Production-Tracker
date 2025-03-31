@@ -29,7 +29,7 @@ const getNextStep = (current) => {
 };
 
 export default function Home() {
-  console.log("🟢 Home loaded");
+  console.log("✅ เริ่มต้น component Home");
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
