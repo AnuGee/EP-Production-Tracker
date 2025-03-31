@@ -1,87 +1,100 @@
-import { db } from "../firebase";
 import React, { useState } from "react";
-
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Sales() {
-  const [product, setProduct] = useState("");
-  const [volume, setVolume] = useState("");
-  const [customer, setCustomer] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
+  const [formData, setFormData] = useState({
+    product_name: "",
+    volume: "",
+    customer: "",
+    delivery_date: "",
+  });
 
-  const handleSubmit = async () => {
-    if (!product || !volume || !customer || !deliveryDate) {
-      alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
-      return;
-    }
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const newJob = {
+      ...formData,
+      status: {},
+      currentStep: "Warehouse",
+      timestamp_sales: serverTimestamp(),
+    };
 
     try {
-      await addDoc(collection(db, "production_workflow"), {
-        Product: product,
-        Volume: volume,
-        Customer: customer,
-        DeliveryDate: deliveryDate,
-        CurrentStep: "Warehouse",
-        Sales_Status: "Completed",
-        Timestamp_Sales: serverTimestamp(),
-      });
-      alert("บันทึกข้อมูลเรียบร้อย ✅");
-
-      // reset
-      setProduct("");
-      setVolume("");
-      setCustomer("");
-      setDeliveryDate("");
-    } catch (err) {
-      alert("เกิดข้อผิดพลาด: " + err.message);
+      await addDoc(collection(db, "production_workflow"), newJob);
+      alert("✅ เพิ่มงานใหม่สำเร็จแล้ว!");
+      setFormData({ product_name: "", volume: "", customer: "", delivery_date: "" });
+    } catch (error) {
+      console.error("❌ เพิ่มงานไม่สำเร็จ:", error);
+      alert("เกิดข้อผิดพลาด ลองใหม่อีกครั้ง");
     }
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Segoe UI", maxWidth: "500px", margin: "auto" }}>
-      <h2>📝 Sales - กรอกข้อมูลเริ่มต้น</h2>
+    <div style={{ maxWidth: 500, margin: "auto", padding: 20 }}>
+      <h2>🛒 Sales - สร้างคำสั่งผลิตใหม่</h2>
+      <form onSubmit={handleSubmit}>
+        <label>📦 Product Name</label>
+        <input
+          value={formData.product_name}
+          onChange={(e) => handleChange("product_name", e.target.value)}
+          required
+          style={inputStyle}
+        />
 
-      <label style={labelStyle}>📦 Product Name</label>
-      <input style={inputStyle} value={product} onChange={(e) => setProduct(e.target.value)} />
+        <label>⚖️ Volume (KG.)</label>
+        <input
+          value={formData.volume}
+          onChange={(e) => handleChange("volume", e.target.value)}
+          required
+          type="number"
+          style={inputStyle}
+        />
 
-      <label style={labelStyle}>⚖️ Volume (KG.)</label>
-      <input type="number" style={inputStyle} value={volume} onChange={(e) => setVolume(e.target.value)} />
+        <label>👤 Customer Name</label>
+        <input
+          value={formData.customer}
+          onChange={(e) => handleChange("customer", e.target.value)}
+          required
+          style={inputStyle}
+        />
 
-      <label style={labelStyle}>👤 Customer Name</label>
-      <input style={inputStyle} value={customer} onChange={(e) => setCustomer(e.target.value)} />
+        <label>📅 Delivery Date</label>
+        <input
+          value={formData.delivery_date}
+          onChange={(e) => handleChange("delivery_date", e.target.value)}
+          required
+          type="date"
+          style={inputStyle}
+        />
 
-      <label style={labelStyle}>🚚 Delivery Date</label>
-      <input type="date" style={inputStyle} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-
-      <button style={buttonStyle} onClick={handleSubmit}>
-        ✅ บันทึกข้อมูล และส่งต่อไปยัง Warehouse
-      </button>
+        <button type="submit" style={buttonStyle}>➕ สร้างงานใหม่</button>
+      </form>
     </div>
   );
 }
 
 const inputStyle = {
+  display: "block",
   width: "100%",
   padding: "10px",
-  marginBottom: "15px",
-  borderRadius: "6px",
+  margin: "10px 0",
+  borderRadius: "5px",
   border: "1px solid #ccc",
-  fontSize: "14px"
-};
-
-const labelStyle = {
-  fontWeight: "bold",
-  marginBottom: "5px",
-  display: "block"
 };
 
 const buttonStyle = {
-  width: "100%",
-  padding: "12px",
-  backgroundColor: "#2563eb",
+  backgroundColor: "#10b981",
   color: "white",
-  fontWeight: "bold",
-  fontSize: "16px",
+  padding: "10px 20px",
   border: "none",
   borderRadius: "6px",
-  cursor: "pointer"
+  cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: "16px",
+  marginTop: "10px",
 };
