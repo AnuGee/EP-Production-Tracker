@@ -7,7 +7,6 @@ import {
   doc,
   deleteDoc
 } from "firebase/firestore";
-import * as XLSX from "xlsx";
 
 // ค่าคงที่
 const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
@@ -73,13 +72,6 @@ export default function Home() {
     fetchJobs();
   };
 
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(jobs);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
-    XLSX.writeFile(workbook, "jobs_export.xlsx");
-  };
-
   const handleDelete = async (id) => {
     await deleteDoc(doc(db, "production_workflow", id));
     fetchJobs();
@@ -88,7 +80,6 @@ export default function Home() {
   return (
     <div style={{ padding: 20 }}>
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
-      <button onClick={exportToExcel}>📤 Export Excel</button>
 
       <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ backgroundColor: "#f3f4f6" }}>
@@ -164,13 +155,15 @@ export default function Home() {
 
                 {/* แสดงสถานะรวม */}
                 <td>
-                  {job.status
-                    ? Object.entries(job.status).map(([key, value]) => (
-                        <div key={key}>
-                          <strong>{key}</strong>: {value}
-                        </div>
-                      ))
-                    : "-"}
+                  {Object.entries(status).length > 0 ? (
+                    Object.entries(status).map(([key, value]) => (
+                      <div key={key}>
+                        <strong>{key}</strong>: {value}
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ color: "#888" }}>–</span>
+                  )}
                 </td>
 
                 <td>{job.customer || job.Customer || "-"}</td>
