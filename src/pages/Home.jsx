@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
+// ค่าคงที่
 const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 const statusOptions = {
   Warehouse: ["ยังไม่เบิก", "Pending", "เบิกเสร็จ"],
@@ -28,6 +29,7 @@ const getNextStep = (current) => {
 };
 
 export default function Home() {
+  console.log("🟢 Home loaded");
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
@@ -38,14 +40,8 @@ export default function Home() {
     const querySnapshot = await getDocs(collection(db, "production_workflow"));
     const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
-
-  // ✅ แสดง object ตัวอย่างใน Console
-  if (data.length > 0) {
-    console.log("🔥 ตัวอย่าง job:", JSON.stringify(data[0], null, 2));
-  } else {
-    console.log("⚠️ ไม่มีข้อมูลใน production_workflow");
-  }
-};
+    console.log("🔥 jobs:", data);
+  };
 
   const handleStatusChange = async (job, field, value) => {
     const jobRef = doc(db, "production_workflow", job.id);
@@ -79,29 +75,7 @@ export default function Home() {
   };
 
   const exportToExcel = () => {
-    const exportData = jobs.map((job) => {
-      let statusText = "-";
-      if (job.currentStep === "QC") {
-        const qc1 = job.status?.qc_inspection || "-";
-        const qc2 = job.status?.qc_coa || "-";
-        statusText = `ตรวจ: ${qc1}, COA: ${qc2}`;
-      } else if (job.currentStep) {
-        const key = job.currentStep.toLowerCase();
-        statusText = job.status?.[key] || "-";
-      }
-
-      return {
-        "Batch No": job.batch_no || "-",
-        "Product": job.product_name || "-",
-        "Current Step": job.currentStep || "-",
-        "Status": statusText,
-        "Customer": job.customer || "-",
-        "Volume": job.volume || "-",
-        "Delivery Date": job.delivery_date || "-"
-      };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const worksheet = XLSX.utils.json_to_sheet(jobs);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
     XLSX.writeFile(workbook, "jobs_export.xlsx");
@@ -170,31 +144,19 @@ export default function Home() {
                           ))}
                         </select>
                       </div>
-                      <div style={{ marginTop: 5, fontStyle: "italic", color: "gray" }}>
-                        {status.qc_inspection && status.qc_coa
-                          ? `ตรวจ: ${status.qc_inspection}, COA: ${status.qc_coa}`
-                          : "ยังไม่มีสถานะ"}
-                      </div>
                     </>
                   ) : (
-                    <>
-                      <select
-                        value={status[current?.toLowerCase()] || ""}
-                        onChange={(e) =>
-                          handleStatusChange(job, current?.toLowerCase(), e.target.value)
-                        }
-                      >
-                        <option value="">--เลือก--</option>
-                        {statusOptions[current]?.map?.((opt) => (
-                          <option key={opt}>{opt}</option>
-                        ))}
-                      </select>
-                      {status[current?.toLowerCase()] && (
-                        <div style={{ marginTop: 5, fontStyle: "italic", color: "gray" }}>
-                          สถานะ: {status[current?.toLowerCase()]}
-                        </div>
-                      )}
-                    </>
+                    <select
+                      value={status[current?.toLowerCase()] || ""}
+                      onChange={(e) =>
+                        handleStatusChange(job, current?.toLowerCase(), e.target.value)
+                      }
+                    >
+                      <option value="">--เลือก--</option>
+                      {statusOptions[current]?.map?.((opt) => (
+                        <option key={opt}>{opt}</option>
+                      ))}
+                    </select>
                   )}
                 </td>
                 <td>{job.customer || "-"}</td>
