@@ -38,6 +38,7 @@ export default function Home() {
     const querySnapshot = await getDocs(collection(db, "production_workflow"));
     const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
+    console.log("🔥 ตัวอย่าง job:", JSON.stringify(data[0], null, 2));
   };
 
   const handleStatusChange = async (job, field, value) => {
