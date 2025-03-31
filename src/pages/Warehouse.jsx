@@ -18,7 +18,7 @@ export default function Warehouse() {
   }, []);
 
   const loadJobs = async () => {
-    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "Warehouse"));
+    const q = query(collection(db, "production_workflow"), where("currentStep", "==", "Warehouse"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
@@ -40,7 +40,7 @@ export default function Warehouse() {
       Warehouse_Step: job.Warehouse_Step || "",
       Warehouse_Status: "Completed",
       Timestamp_Warehouse: serverTimestamp(),
-      CurrentStep: nextStep,
+      currentStep: nextStep,
     });
 
     alert("อัปเดตสำเร็จ ✅");
@@ -60,11 +60,11 @@ export default function Warehouse() {
       {jobs.length === 0 && <p>ไม่มีงานที่รอในขั้นตอนนี้</p>}
 
       {jobs.map((job) => {
-        const disableStep = job.Stock !== "มี";
+        const disableStep = job.Stock !== "ไม่มี";
         return (
           <div key={job.id} style={cardStyle}>
-            <p><strong>Product:</strong> {job.Product}</p>
-            <p><strong>Customer:</strong> {job.Customer}</p>
+            <p><strong>Product:</strong> {job.product_name}</p>
+            <p><strong>Customer:</strong> {job.customer}</p>
 
             <label style={labelStyle}>📦 Stock</label>
             <select
