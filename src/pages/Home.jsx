@@ -30,47 +30,61 @@ const getNextStep = (current) => {
 
 export default function Home() {
   const [jobs, setJobs] = useState([]);
+  const [debug, setDebug] = useState(null);
 
   useEffect(() => {
     fetchJobs();
   }, []);
 
   const fetchJobs = async () => {
-    const querySnapshot = await getDocs(collection(db, "production_workflow"));
-    const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    setJobs(data);
-    console.log("🔥 jobs:", data);
+    try {
+      const querySnapshot = await getDocs(collection(db, "production_workflow"));
+      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setJobs(data);
+      console.log("🔥 jobs:", data);
+      // แสดงโครงสร้างข้อมูลของ job แรก (ถ้ามี) เพื่อตรวจสอบ
+      if (data.length > 0) {
+        setDebug(JSON.stringify(data[0], null, 2));
+      }
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    }
   };
 
   const handleStatusChange = async (job, field, value) => {
-    const jobRef = doc(db, "production_workflow", job.id);
-    const newStatus = { ...job.status, [field]: value };
+    try {
+      const jobRef = doc(db, "production_workflow", job.id);
+      const newStatus = { ...job.status, [field]: value };
 
-    let shouldAdvance = false;
-    if (job.currentStep === "Warehouse" && value === "เบิกเสร็จ") {
-      shouldAdvance = true;
-    }
-    if (job.currentStep === "Production" && value === "ผลิตเสร็จ") {
-      shouldAdvance = true;
-    }
-    if (
-      job.currentStep === "QC" &&
-      newStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
-      newStatus.qc_coa === "เตรียมพร้อมแล้ว"
-    ) {
-      shouldAdvance = true;
-    }
-    if (job.currentStep === "Account" && value === "Invoice ออกแล้ว") {
-      shouldAdvance = true;
-    }
+      let shouldAdvance = false;
+      if (job.currentStep === "Warehouse" && value === "เบิกเสร็จ") {
+        shouldAdvance = true;
+      }
+      if (job.currentStep === "Production" && value === "ผลิตเสร็จ") {
+        shouldAdvance = true;
+      }
+      if (
+        job.currentStep === "QC" &&
+        newStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
+        newStatus.qc_coa === "เตรียมพร้อมแล้ว"
+      ) {
+        shouldAdvance = true;
+      }
+      if (job.currentStep === "Account" && value === "Invoice ออกแล้ว") {
+        shouldAdvance = true;
+      }
 
-    const updateData = { status: newStatus };
-    if (shouldAdvance) {
-      updateData.currentStep = getNextStep(job.currentStep);
-    }
+      const updateData = { status: newStatus };
+      if (shouldAdvance) {
+        updateData.currentStep = getNextStep(job.currentStep);
+      }
 
-    await updateDoc(jobRef, updateData);
-    fetchJobs();
+      await updateDoc(jobRef, updateData);
+      fetchJobs();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("เกิดข้อผิดพลาดในการอัพเดทสถานะ: " + error.message);
+    }
   };
 
   const exportToExcel = () => {
@@ -81,37 +95,75 @@ export default function Home() {
   };
 
   const handleDelete = async (id) => {
-    await deleteDoc(doc(db, "production_workflow", id));
-    fetchJobs();
+    try {
+      await deleteDoc(doc(db, "production_workflow", id));
+      fetchJobs();
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      alert("เกิดข้อผิดพลาดในการลบข้อมูล: " + error.message);
+    }
   };
 
-  // ฟังก์ชันสำหรับเลือกค่า status ที่ถูกต้องตาม departmentName
-  const getDepartmentStatus = (job, departmentName) => {
-    if (!job.status) return "";
+  const getCurrentStatusText = (job) => {
+    const current = job.currentStep;
+    const status = job.status || {};
+
+    if (!current) return "-";
     
-    if (departmentName === "Warehouse") {
-      return job.status.warehouse || "";
-    } else if (departmentName === "Production") {
-      return job.status.production || "";
-    } else if (departmentName === "QC") {
-      // QC มีสถานะแยก 2 ส่วน
-      return {
-        qc_inspection: job.status.qc_inspection || "",
-        qc_coa: job.status.qc_coa || ""
-      };
-    } else if (departmentName === "Account") {
-      return job.status.account || "";
-    } else if (departmentName === "Sales") {
-      return job.status.sales || "";
+    if (current === "QC") {
+      const inspection = status.qc_inspection ? `ตรวจปล่อย: ${status.qc_inspection}` : '';
+      const coa = status.qc_coa ? `COA: ${status.qc_coa}` : '';
+      return [inspection, coa].filter(Boolean).join(', ') || '-';
     }
     
-    return "";
+    const statusKey = current.toLowerCase();
+    return status[statusKey] || "-";
+  };
+
+  // แถบสีตามสถานะ
+  const getStatusColor = (job) => {
+    const current = job.currentStep;
+    if (!current || !job.status) return "#ffffff"; // สีขาว (ไม่มีสถานะ)
+
+    switch (current) {
+      case "Warehouse":
+        if (job.status.warehouse === "เบิกเสร็จ") return "#d1ffd1"; // สีเขียวอ่อน
+        return "#ffffd1"; // สีเหลืองอ่อน
+      case "Production":
+        if (job.status.production === "ผลิตเสร็จ") return "#d1ffd1"; // สีเขียวอ่อน
+        return "#ffffd1"; // สีเหลืองอ่อน
+      case "QC":
+        if (job.status.qc_inspection === "ตรวจผ่านแล้ว" && job.status.qc_coa === "เตรียมพร้อมแล้ว") 
+          return "#d1ffd1"; // สีเขียวอ่อน
+        return "#ffffd1"; // สีเหลืองอ่อน
+      case "Account":
+        if (job.status.account === "Invoice ออกแล้ว") return "#d1ffd1"; // สีเขียวอ่อน
+        return "#ffffd1"; // สีเหลืองอ่อน
+      default:
+        return "#ffffff"; // สีขาว (แผนกอื่นๆ)
+    }
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
-      <button onClick={exportToExcel}>📤 Export Excel</button>
+      <div style={{ marginBottom: 10 }}>
+        <button onClick={exportToExcel} style={{ marginRight: 10, padding: "5px 10px" }}>
+          📤 Export Excel
+        </button>
+        <button onClick={fetchJobs} style={{ padding: "5px 10px" }}>
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* Debug Panel - แสดงเฉพาะในโหมดพัฒนา */}
+      {debug && (
+        <div style={{ marginBottom: 20, padding: 10, border: '1px solid #ccc', borderRadius: 5 }}>
+          <h4>โครงสร้างข้อมูล (Debug):</h4>
+          <pre style={{ overflowX: 'auto' }}>{debug}</pre>
+          <button onClick={() => setDebug(null)}>ปิด Debug</button>
+        </div>
+      )}
 
       <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ backgroundColor: "#f3f4f6" }}>
@@ -119,7 +171,7 @@ export default function Home() {
             <th>Batch No</th>
             <th>Product</th>
             <th>Current Step</th>
-            <th>Status</th>
+            <th>Current Status</th>
             <th>Update Status</th>
             <th>สถานะรวม</th>
             <th>Customer</th>
@@ -132,23 +184,16 @@ export default function Home() {
           {jobs.map((job) => {
             const current = job.currentStep;
             const status = job.status || {};
-            const currentStatus = getDepartmentStatus(job, current);
+            const rowColor = getStatusColor(job);
             
             return (
-              <tr key={job.id}>
+              <tr key={job.id} style={{ backgroundColor: rowColor }}>
                 <td>{job.batch_no || "N/A"}</td>
                 <td>{job.product_name || job.Product || "-"}</td>
                 <td>{current || "-"}</td>
                 
                 {/* แสดงสถานะปัจจุบัน */}
-                <td>
-                  {current === "QC" 
-                    ? <>
-                        <div>ตรวจปล่อย: {status.qc_inspection || "-"}</div>
-                        <div>COA & Sample: {status.qc_coa || "-"}</div>
-                      </>
-                    : status[current?.toLowerCase()] || "-"}
-                </td>
+                <td>{getCurrentStatusText(job)}</td>
 
                 {/* ปรับสถานะแผนกปัจจุบัน */}
                 <td>
