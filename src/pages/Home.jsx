@@ -13,19 +13,12 @@ import * as XLSX from "xlsx";
 const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 const statusOptions = {
   Warehouse: ["ยังไม่เบิก", "Pending", "เบิกเสร็จ"],
-  Production: ["ยังไม่เริ่มผลิต", "กำลังผลิต", "กำลังบรรจุ", "ผลิตเสร็จ"],
+  Production: ["ยังไม่เริ่มผลิต", "กำลังผลิต", "รอผลตรวจ", "กำลังบรรจุ", "ผลิตเสร็จ"],
   QC: {
     qc_inspection: ["ยังไม่ได้ตรวจ", "กำลังตรวจ (รอปรับ)", "กำลังตรวจ (Hold)", "ตรวจผ่านแล้ว"],
     qc_coa: ["ยังไม่เตรียม", "กำลังเตรียม", "เตรียมพร้อมแล้ว"]
   },
   Account: ["Invoice ยังไม่ออก", "Invoice ออกแล้ว"]
-};
-
-const getNextStep = (current) => {
-  const index = departments.findIndex((d) => d === current);
-  return index !== -1 && index < departments.length - 1
-    ? departments[index + 1]
-    : null;
 };
 
 export default function Home() {
@@ -45,31 +38,45 @@ export default function Home() {
   const handleStatusChange = async (job, field, value) => {
     const jobRef = doc(db, "production_workflow", job.id);
     const newStatus = { ...job.status, [field]: value };
+    let nextStep = job.currentStep;
 
-    let shouldAdvance = false;
-    if (job.currentStep === "Warehouse" && value === "เบิกเสร็จ") {
-      shouldAdvance = true;
+    // Logic เปลี่ยน currentStep ตาม workflow ใหม่
+    if (job.currentStep === "Warehouse" && newStatus.warehouse === "เบิกเสร็จ") {
+      nextStep = "Production";
     }
-    if (job.currentStep === "Production" && value === "ผลิตเสร็จ") {
-      shouldAdvance = true;
+
+    if (job.currentStep === "Production") {
+      if (newStatus.production === "รอผลตรวจ") {
+        nextStep = "QC";
+      } else if (newStatus.production === "ผลิตเสร็จ") {
+        nextStep = "Account";
+      } else {
+        nextStep = "Production"; // ยังคงอยู่
+      }
     }
+
     if (
       job.currentStep === "QC" &&
       newStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
       newStatus.qc_coa === "เตรียมพร้อมแล้ว"
     ) {
-      shouldAdvance = true;
-    }
-    if (job.currentStep === "Account" && value === "Invoice ออกแล้ว") {
-      shouldAdvance = true;
+      nextStep = "Production"; // กลับไป Production
     }
 
-    const updateData = { status: newStatus };
-    if (shouldAdvance) {
-      updateData.currentStep = getNextStep(job.currentStep);
+    if (job.currentStep === "Account") {
+      if (newStatus.account === "Invoice ออกแล้ว") {
+        newStatus.complete = true;
+        // nextStep ค้างที่ Account หรือ mark จบงานก็ได้
+      } else {
+        nextStep = "Account"; // ยังคงอยู่
+      }
     }
 
-    await updateDoc(jobRef, updateData);
+    await updateDoc(jobRef, {
+      status: newStatus,
+      currentStep: nextStep
+    });
+
     fetchJobs();
   };
 
@@ -114,7 +121,6 @@ export default function Home() {
                 <td>{job.product_name || job.Product || "-"}</td>
                 <td>{current || "-"}</td>
 
-                {/* ปรับสถานะแผนกปัจจุบัน */}
                 <td>
                   {current === "QC" ? (
                     <>
@@ -162,15 +168,16 @@ export default function Home() {
                   )}
                 </td>
 
-                {/* แสดงสถานะรวม */}
                 <td>
-                  {job.status
-                    ? Object.entries(job.status).map(([key, value]) => (
-                        <div key={key}>
-                          <strong>{key}</strong>: {value}
-                        </div>
-                      ))
-                    : "-"}
+                  {Object.entries(status).length > 0 ? (
+                    Object.entries(status).map(([key, value]) => (
+                      <div key={key}>
+                        <strong>{key}</strong>: {value}
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ color: "#888" }}>–</span>
+                  )}
                 </td>
 
                 <td>{job.customer || job.Customer || "-"}</td>
