@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { db } from "../../firebase"; // ✅ ใช้ path นี้อันเดียว
+import { db } from "../firebase"; // ✅ ใช้ path นี้อันเดียว
 import { collection, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
