@@ -38,8 +38,14 @@ export default function Home() {
     const querySnapshot = await getDocs(collection(db, "production_workflow"));
     const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
+
+  // ✅ แสดง object ตัวอย่างใน Console
+  if (data.length > 0) {
     console.log("🔥 ตัวอย่าง job:", JSON.stringify(data[0], null, 2));
-  };
+  } else {
+    console.log("⚠️ ไม่มีข้อมูลใน production_workflow");
+  }
+};
 
   const handleStatusChange = async (job, field, value) => {
     const jobRef = doc(db, "production_workflow", job.id);
