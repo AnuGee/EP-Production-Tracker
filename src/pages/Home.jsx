@@ -29,7 +29,6 @@ const getNextStep = (current) => {
 };
 
 export default function Home() {
-  console.log("🟢 Home loaded");
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
@@ -91,13 +90,14 @@ export default function Home() {
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
       <button onClick={exportToExcel}>📤 Export Excel</button>
 
-      <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%" }}>
-        <thead>
+      <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%", borderCollapse: "collapse" }}>
+        <thead style={{ backgroundColor: "#f3f4f6" }}>
           <tr>
             <th>Batch No</th>
             <th>Product</th>
             <th>Current Step</th>
-            <th>Status</th>
+            <th>Update Status</th>
+            <th>สถานะรวม</th>
             <th>Customer</th>
             <th>Volume</th>
             <th>Delivery Date</th>
@@ -111,8 +111,10 @@ export default function Home() {
             return (
               <tr key={job.id}>
                 <td>{job.batch_no || "N/A"}</td>
-                <td>{job.product_name}</td>
-                <td>{current}</td>
+                <td>{job.product_name || job.Product || "-"}</td>
+                <td>{current || "-"}</td>
+
+                {/* ปรับสถานะแผนกปัจจุบัน */}
                 <td>
                   {current === "QC" ? (
                     <>
@@ -159,9 +161,21 @@ export default function Home() {
                     </select>
                   )}
                 </td>
-                <td>{job.customer || "-"}</td>
-                <td>{job.volume || "-"}</td>
-                <td>{job.delivery_date || "-"}</td>
+
+                {/* แสดงสถานะรวม */}
+                <td>
+                  {job.status
+                    ? Object.entries(job.status).map(([key, value]) => (
+                        <div key={key}>
+                          <strong>{key}</strong>: {value}
+                        </div>
+                      ))
+                    : "-"}
+                </td>
+
+                <td>{job.customer || job.Customer || "-"}</td>
+                <td>{job.volume || job.Volume || "-"}</td>
+                <td>{job.delivery_date || job.DeliveryDate || "-"}</td>
                 <td>
                   {(current === "Sales" || current === "Admin") && (
                     <button onClick={() => handleDelete(job.id)}>🗑 ลบ</button>
