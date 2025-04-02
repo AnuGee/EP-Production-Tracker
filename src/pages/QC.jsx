@@ -1,15 +1,15 @@
-import { db } from "../firebase";
+// src/pages/QC.jsx
 import React, { useEffect, useState } from "react";
+import { db } from "../firebase";
 import {
   collection,
   getDocs,
-  query,
-  where,
   doc,
   updateDoc,
   serverTimestamp,
+  query,
+  where,
 } from "firebase/firestore";
-
 
 export default function QC() {
   const [jobs, setJobs] = useState([]);
@@ -19,7 +19,7 @@ export default function QC() {
   }, []);
 
   const loadJobs = async () => {
-    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "QC"));
+    const q = query(collection(db, "production_workflow"), where("currentStep", "==", "QC"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
@@ -31,41 +31,44 @@ export default function QC() {
     );
   };
 
-  const handleUpdate = async (job) => {
+  const handleSave = async (job) => {
     const jobRef = doc(db, "production_workflow", job.id);
 
-    const isReady =
-      job.QC_Check === "ตรวจผ่านแล้ว" &&
-      job.COA_Sample === "เตรียมพร้อมแล้ว";
+    let nextStep = "QC";
 
-    const nextStep = isReady ? "Account" : "QC";
+    if (
+      job.qc_inspection === "ตรวจผ่านแล้ว" &&
+      job.qc_coa === "เตรียมพร้อมแล้ว"
+    ) {
+      nextStep = "Production"; // กลับไป Production
+    }
 
     await updateDoc(jobRef, {
-      QC_Check: job.QC_Check || "",
-      COA_Sample: job.COA_Sample || "",
+      qc_inspection: job.qc_inspection || "",
+      qc_coa: job.qc_coa || "",
       Timestamp_QC: serverTimestamp(),
-      CurrentStep: nextStep,
+      currentStep: nextStep,
     });
 
-    alert("อัปเดต QC สำเร็จ ✅");
+    alert("อัปเดตสำเร็จ ✅");
     loadJobs();
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Segoe UI" }}>
+    <div style={{ padding: 20, fontFamily: "Segoe UI" }}>
       <h2>🧬 Quality Control - ตรวจสอบคุณภาพ</h2>
 
       {jobs.length === 0 && <p>ไม่มีงานในขั้นตอนนี้</p>}
 
       {jobs.map((job) => (
         <div key={job.id} style={cardStyle}>
-          <p><strong>Product:</strong> {job.Product}</p>
-          <p><strong>Customer:</strong> {job.Customer}</p>
+          <p><strong>Product:</strong> {job.product_name}</p>
+          <p><strong>Customer:</strong> {job.customer}</p>
 
-          <label style={labelStyle}>🔍 ตรวจปล่อย</label>
+          <label style={labelStyle}>✅ ตรวจปล่อย</label>
           <select
-            value={job.QC_Check || ""}
-            onChange={(e) => handleChange(job.id, "QC_Check", e.target.value)}
+            value={job.qc_inspection || ""}
+            onChange={(e) => handleChange(job.id, "qc_inspection", e.target.value)}
             style={inputStyle}
           >
             <option value="">-- เลือก --</option>
@@ -75,10 +78,10 @@ export default function QC() {
             <option value="ตรวจผ่านแล้ว">ตรวจผ่านแล้ว</option>
           </select>
 
-          <label style={labelStyle}>📄 COA & Sample</label>
+          <label style={labelStyle}>🧾 COA & Sample</label>
           <select
-            value={job.COA_Sample || ""}
-            onChange={(e) => handleChange(job.id, "COA_Sample", e.target.value)}
+            value={job.qc_coa || ""}
+            onChange={(e) => handleChange(job.id, "qc_coa", e.target.value)}
             style={inputStyle}
           >
             <option value="">-- เลือก --</option>
@@ -87,7 +90,7 @@ export default function QC() {
             <option value="เตรียมพร้อมแล้ว">เตรียมพร้อมแล้ว</option>
           </select>
 
-          <button onClick={() => handleUpdate(job)} style={buttonStyle}>
+          <button style={buttonStyle} onClick={() => handleSave(job)}>
             ✅ บันทึกสถานะ
           </button>
         </div>
@@ -96,7 +99,6 @@ export default function QC() {
   );
 }
 
-// ✅ Style
 const cardStyle = {
   border: "1px solid #ccc",
   padding: "15px",
