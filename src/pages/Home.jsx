@@ -5,11 +5,9 @@ import {
   getDocs,
   updateDoc,
   doc,
-  deleteDoc
+  deleteDoc,
 } from "firebase/firestore";
-import * as XLSX from "xlsx";
 
-const departments = ["Sales", "Warehouse", "Production", "QC", "Account"];
 const statusOptions = {
   Warehouse: ["ยังไม่เบิก", "Pending", "เบิกเสร็จ"],
   Production: ["ยังไม่เริ่มผลิต", "กำลังผลิต", "รอผลตรวจ", "กำลังบรรจุ", "ผลิตเสร็จ"],
@@ -28,59 +26,54 @@ export default function Home() {
   }, []);
 
   const fetchJobs = async () => {
-    const querySnapshot = await getDocs(collection(db, "production_workflow"));
-    const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await getDocs(collection(db, "production_workflow"));
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
   };
 
   const handleStatusChange = async (job, field, value) => {
     const jobRef = doc(db, "production_workflow", job.id);
-    const newStatus = { ...job.status, [field]: value };
+    const updatedStatus = { ...job.status, [field]: value };
     let nextStep = job.currentStep;
 
-    if (job.currentStep === "Warehouse" && newStatus.warehouse === "เบิกเสร็จ") {
-      nextStep = "Production";
-    }
-
-    if (job.currentStep === "Production") {
-      if (newStatus.production === "รอผลตรวจ") {
+    if (job.currentStep === "Warehouse") {
+      if (updatedStatus.stock === "มี") {
         nextStep = "QC";
-      } else if (newStatus.production === "ผลิตเสร็จ") {
-        nextStep = "Account";
-      } else {
+      } else if (updatedStatus.stock === "ไม่มี" && updatedStatus.warehouse === "เบิกเสร็จ") {
         nextStep = "Production";
       }
     }
 
-    if (
-      job.currentStep === "QC" &&
-      newStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
-      newStatus.qc_coa === "เตรียมพร้อมแล้ว"
-    ) {
-      nextStep = "Production";
-    }
-
-    if (job.currentStep === "Account") {
-      if (newStatus.account === "Invoice ออกแล้ว") {
-        newStatus.complete = true;
-      } else {
+    if (job.currentStep === "Production") {
+      if (updatedStatus.production === "รอผลตรวจ") {
+        nextStep = "QC";
+      } else if (updatedStatus.production === "ผลิตเสร็จ") {
         nextStep = "Account";
       }
     }
 
+    if (job.currentStep === "QC") {
+      if (
+        updatedStatus.qc_inspection === "ตรวจผ่านแล้ว" &&
+        updatedStatus.qc_coa === "เตรียมพร้อมแล้ว"
+      ) {
+        nextStep = "Production";
+      }
+    }
+
+    if (job.currentStep === "Account") {
+      if (updatedStatus.account === "Invoice ออกแล้ว") {
+        updatedStatus.complete = true;
+        nextStep = "Completed";
+      }
+    }
+
     await updateDoc(jobRef, {
-      status: newStatus,
+      status: updatedStatus,
       currentStep: nextStep
     });
 
     fetchJobs();
-  };
-
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(jobs);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
-    XLSX.writeFile(workbook, "jobs_export.xlsx");
   };
 
   const handleDelete = async (id) => {
@@ -91,7 +84,6 @@ export default function Home() {
   return (
     <div style={{ padding: 20 }}>
       <h2>📊 ความคืบหน้าของงานแต่ละชุด</h2>
-      <button onClick={exportToExcel}>📤 Export Excel</button>
 
       <table border="1" cellPadding="5" style={{ marginTop: 20, width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ backgroundColor: "#f3f4f6" }}>
@@ -111,6 +103,7 @@ export default function Home() {
           {jobs.map((job) => {
             const current = job.currentStep;
             const status = job.status || {};
+
             return (
               <tr key={job.id}>
                 <td>{job.batch_no || "N/A"}</td>
@@ -138,16 +131,18 @@ export default function Home() {
                         Step:
                         <select
                           value={status.warehouse || ""}
-                          disabled={status.stock !== "มี"}
-                          style={{ backgroundColor: status.stock === "มี" ? "white" : "#eee" }}
+                          disabled={status.stock === "มี"}
+                          style={{
+                            backgroundColor: status.stock === "มี" ? "#eee" : "#fff",
+                          }}
                           onChange={(e) =>
                             handleStatusChange(job, "warehouse", e.target.value)
                           }
                         >
                           <option value="">--เลือก--</option>
-                          <option value="ยังไม่เบิก">ยังไม่เบิก</option>
-                          <option value="Pending">Pending</option>
-                          <option value="เบิกเสร็จ">เบิกเสร็จ</option>
+                          {statusOptions.Warehouse.map((opt) => (
+                            <option key={opt}>{opt}</option>
+                          ))}
                         </select>
                       </div>
                     </>
