@@ -1,15 +1,15 @@
-import { db } from "../firebase";
+// src/pages/Production.jsx
 import React, { useEffect, useState } from "react";
+import { db } from "../firebase";
 import {
   collection,
   getDocs,
-  query,
-  where,
   doc,
   updateDoc,
   serverTimestamp,
+  query,
+  where,
 } from "firebase/firestore";
-
 
 export default function Production() {
   const [jobs, setJobs] = useState([]);
@@ -19,7 +19,7 @@ export default function Production() {
   }, []);
 
   const loadJobs = async () => {
-    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "Production"));
+    const q = query(collection(db, "production_workflow"), where("currentStep", "==", "Production"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
@@ -31,54 +31,62 @@ export default function Production() {
     );
   };
 
-  const handleUpdate = async (job) => {
+  const handleSave = async (job) => {
     const jobRef = doc(db, "production_workflow", job.id);
 
-    const nextStep = job.Production_Status === "ผลิตเสร็จ" ? "QC" : "Production";
+    let nextStep = "Production";
+    if (job.Production_Status === "รอผลตรวจ") {
+      nextStep = "QC";
+    } else if (job.Production_Status === "ผลิตเสร็จ") {
+      nextStep = "Account";
+    }
 
     await updateDoc(jobRef, {
-      BatchNo: job.BatchNo || "",
+      batch_no: job.batch_no || "",
       Production_Status: job.Production_Status || "",
       Timestamp_Production: serverTimestamp(),
-      CurrentStep: nextStep,
+      currentStep: nextStep,
     });
 
-    alert("อัปเดตเรียบร้อย ✅");
+    alert("บันทึกข้อมูลสำเร็จ ✅");
     loadJobs();
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Segoe UI" }}>
-      <h2>🧪 Production - สถานะการผลิต</h2>
+    <div style={{ padding: 20, fontFamily: "Segoe UI" }}>
+      <h2>🧪 Production - ตรวจสอบและผลิต</h2>
 
       {jobs.length === 0 && <p>ไม่มีงานในขั้นตอนนี้</p>}
 
       {jobs.map((job) => (
         <div key={job.id} style={cardStyle}>
-          <p><strong>Product:</strong> {job.Product}</p>
-          <p><strong>Customer:</strong> {job.Customer}</p>
+          <p><strong>Product:</strong> {job.product_name}</p>
+          <p><strong>Customer:</strong> {job.customer}</p>
 
           <label style={labelStyle}>🔢 Batch Number</label>
           <input
-            value={job.BatchNo || ""}
-            onChange={(e) => handleChange(job.id, "BatchNo", e.target.value)}
+            value={job.batch_no || ""}
+            onChange={(e) => handleChange(job.id, "batch_no", e.target.value)}
             style={inputStyle}
           />
 
-          <label style={labelStyle}>⚙️ สถานะการผลิต</label>
+          <label style={labelStyle}>📦 สถานะการผลิต</label>
           <select
             value={job.Production_Status || ""}
-            onChange={(e) => handleChange(job.id, "Production_Status", e.target.value)}
+            onChange={(e) =>
+              handleChange(job.id, "Production_Status", e.target.value)
+            }
             style={inputStyle}
           >
             <option value="">-- เลือก --</option>
             <option value="ยังไม่เริ่มผลิต">ยังไม่เริ่มผลิต</option>
             <option value="กำลังผลิต">กำลังผลิต</option>
+            <option value="รอผลตรวจ">รอผลตรวจ</option>
             <option value="กำลังบรรจุ">กำลังบรรจุ</option>
             <option value="ผลิตเสร็จ">ผลิตเสร็จ</option>
           </select>
 
-          <button style={buttonStyle} onClick={() => handleUpdate(job)}>
+          <button style={buttonStyle} onClick={() => handleSave(job)}>
             ✅ บันทึกสถานะ
           </button>
         </div>
@@ -87,7 +95,6 @@ export default function Production() {
   );
 }
 
-// ✅ Style
 const cardStyle = {
   border: "1px solid #ccc",
   padding: "15px",
