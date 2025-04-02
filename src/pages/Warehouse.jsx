@@ -1,3 +1,4 @@
+// src/pages/Warehouse.jsx
 import { db } from "../firebase";
 import React, { useEffect, useState } from "react";
 import {
@@ -24,52 +25,52 @@ export default function Warehouse() {
     setJobs(data);
   };
 
-  const handleUpdate = async (job) => {
-    const jobRef = doc(db, "production_workflow", job.id);
-
-    let nextStep = "Warehouse";
-
-    if (job.Stock === "มี") {
-      nextStep = "QC";
-    } else if (job.Stock === "ไม่มี" && job.Warehouse_Step === "เบิกเสร็จ") {
-      nextStep = "Production";
-    }
-
-    await updateDoc(jobRef, {
-      Stock: job.Stock,
-      Warehouse_Step: job.Warehouse_Step || "",
-      Warehouse_Status: "Completed",
-      Timestamp_Warehouse: serverTimestamp(),
-      currentStep: nextStep,
-    });
-
-    alert("อัปเดตสำเร็จ ✅");
-    loadJobs();
-  };
-
   const handleChange = (id, field, value) => {
     setJobs((prev) =>
       prev.map((job) => (job.id === id ? { ...job, [field]: value } : job))
     );
   };
 
+  const handleUpdate = async (job) => {
+    const jobRef = doc(db, "production_workflow", job.id);
+
+    let nextStep = job.currentStep;
+
+    if (job.stock === "มี") {
+      nextStep = "QC";
+    } else if (job.stock === "ไม่มี" && job.warehouse_step === "เบิกเสร็จ") {
+      nextStep = "Production";
+    }
+
+    await updateDoc(jobRef, {
+      stock: job.stock,
+      warehouse_step: job.warehouse_step || "",
+      warehouse_status: "Completed",
+      timestamp_warehouse: serverTimestamp(),
+      currentStep: nextStep,
+    });
+
+    alert("📦 อัปเดตสำเร็จแล้ว");
+    loadJobs();
+  };
+
   return (
     <div style={{ padding: "20px", fontFamily: "Segoe UI" }}>
       <h2>🏭 Warehouse - จัดการวัตถุดิบ</h2>
 
-      {jobs.length === 0 && <p>ไม่มีงานที่รอในขั้นตอนนี้</p>}
+      {jobs.length === 0 && <p>⏳ ไม่มีงานที่รอในขั้นตอนนี้</p>}
 
       {jobs.map((job) => {
-        const disableStep = job.Stock !== "ไม่มี";
+        const disableStep = job.stock !== "ไม่มี";
         return (
           <div key={job.id} style={cardStyle}>
-            <p><strong>Product:</strong> {job.product_name}</p>
-            <p><strong>Customer:</strong> {job.customer}</p>
+            <p><strong>Product:</strong> {job.product_name || job.Product}</p>
+            <p><strong>Customer:</strong> {job.customer || job.Customer}</p>
 
             <label style={labelStyle}>📦 Stock</label>
             <select
-              value={job.Stock || ""}
-              onChange={(e) => handleChange(job.id, "Stock", e.target.value)}
+              value={job.stock || ""}
+              onChange={(e) => handleChange(job.id, "stock", e.target.value)}
               style={inputStyle}
             >
               <option value="">-- เลือก --</option>
@@ -79,8 +80,8 @@ export default function Warehouse() {
 
             <label style={labelStyle}>⚙️ Step</label>
             <select
-              value={job.Warehouse_Step || ""}
-              onChange={(e) => handleChange(job.id, "Warehouse_Step", e.target.value)}
+              value={job.warehouse_step || ""}
+              onChange={(e) => handleChange(job.id, "warehouse_step", e.target.value)}
               style={{
                 ...inputStyle,
                 backgroundColor: disableStep ? "#e5e7eb" : "#fff",
@@ -93,10 +94,7 @@ export default function Warehouse() {
               <option value="เบิกเสร็จ">เบิกเสร็จ</option>
             </select>
 
-            <button
-              onClick={() => handleUpdate(job)}
-              style={buttonStyle}
-            >
+            <button onClick={() => handleUpdate(job)} style={buttonStyle}>
               ✅ บันทึกสถานะ
             </button>
           </div>
