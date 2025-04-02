@@ -1,15 +1,15 @@
-import { db } from "../firebase";
+// src/pages/Account.jsx
 import React, { useEffect, useState } from "react";
+import { db } from "../firebase";
 import {
   collection,
   getDocs,
-  query,
-  where,
   doc,
   updateDoc,
   serverTimestamp,
+  query,
+  where,
 } from "firebase/firestore";
-
 
 export default function Account() {
   const [jobs, setJobs] = useState([]);
@@ -19,7 +19,7 @@ export default function Account() {
   }, []);
 
   const loadJobs = async () => {
-    const q = query(collection(db, "production_workflow"), where("CurrentStep", "==", "Account"));
+    const q = query(collection(db, "production_workflow"), where("currentStep", "==", "Account"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setJobs(data);
@@ -31,36 +31,36 @@ export default function Account() {
     );
   };
 
-  const handleUpdate = async (job) => {
+  const handleSave = async (job) => {
     const jobRef = doc(db, "production_workflow", job.id);
 
-    const nextStep = job.Account_Status === "Invoice ออกแล้ว" ? "Completed" : "Account";
+    const nextStep = job.account_status === "Invoice ออกแล้ว" ? "Completed" : "Account";
 
     await updateDoc(jobRef, {
-      Account_Status: job.Account_Status || "",
+      account_status: job.account_status || "",
       Timestamp_Account: serverTimestamp(),
-      CurrentStep: nextStep,
+      currentStep: nextStep,
     });
 
-    alert("อัปเดตสำเร็จ ✅");
+    alert("บันทึกเรียบร้อย ✅");
     loadJobs();
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Segoe UI" }}>
-      <h2>💵 Account - สถานะการออกใบแจ้งหนี้</h2>
+    <div style={{ padding: 20, fontFamily: "Segoe UI" }}>
+      <h2>💰 ฝ่ายบัญชี - ออกใบแจ้งหนี้</h2>
 
-      {jobs.length === 0 && <p>ไม่มีงานในขั้นตอนนี้</p>}
+      {jobs.length === 0 && <p>ไม่มีงานที่รอในขั้นตอนนี้</p>}
 
       {jobs.map((job) => (
         <div key={job.id} style={cardStyle}>
-          <p><strong>Product:</strong> {job.Product}</p>
-          <p><strong>Customer:</strong> {job.Customer}</p>
+          <p><strong>Product:</strong> {job.product_name}</p>
+          <p><strong>Customer:</strong> {job.customer}</p>
 
-          <label style={labelStyle}>🧾 สถานะใบแจ้งหนี้</label>
+          <label style={labelStyle}>💸 สถานะใบแจ้งหนี้</label>
           <select
-            value={job.Account_Status || ""}
-            onChange={(e) => handleChange(job.id, "Account_Status", e.target.value)}
+            value={job.account_status || ""}
+            onChange={(e) => handleChange(job.id, "account_status", e.target.value)}
             style={inputStyle}
           >
             <option value="">-- เลือก --</option>
@@ -68,7 +68,7 @@ export default function Account() {
             <option value="Invoice ออกแล้ว">Invoice ออกแล้ว</option>
           </select>
 
-          <button onClick={() => handleUpdate(job)} style={buttonStyle}>
+          <button style={buttonStyle} onClick={() => handleSave(job)}>
             ✅ บันทึกสถานะ
           </button>
         </div>
@@ -77,7 +77,6 @@ export default function Account() {
   );
 }
 
-// ✅ Style
 const cardStyle = {
   border: "1px solid #ccc",
   padding: "15px",
@@ -102,7 +101,7 @@ const inputStyle = {
 };
 
 const buttonStyle = {
-  backgroundColor: "#2563eb",
+  backgroundColor: "#16a34a",
   color: "white",
   padding: "10px 16px",
   border: "none",
