@@ -1,100 +1,149 @@
-import React, { useState } from "react";
+// src/pages/Sales.jsx
+import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function Sales() {
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     product_name: "",
     volume: "",
     customer: "",
     delivery_date: "",
   });
+  const [jobs, setJobs] = useState([]);
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    const snapshot = await getDocs(collection(db, "production_workflow"));
+    const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    setJobs(data.filter((job) => job.currentStep === "Sales"));
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const newJob = {
-      ...formData,
-      status: {},
-      currentStep: "Warehouse",
-      timestamp_sales: serverTimestamp(),
-    };
-
-    try {
-      await addDoc(collection(db, "production_workflow"), newJob);
-      alert("✅ เพิ่มงานใหม่สำเร็จแล้ว!");
-      setFormData({ product_name: "", volume: "", customer: "", delivery_date: "" });
-    } catch (error) {
-      console.error("❌ เพิ่มงานไม่สำเร็จ:", error);
-      alert("เกิดข้อผิดพลาด ลองใหม่อีกครั้ง");
+    if (!form.product_name || !form.volume || !form.customer || !form.delivery_date) {
+      alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
+      return;
     }
+
+    await addDoc(collection(db, "production_workflow"), {
+      ...form,
+      currentStep: "Warehouse",
+      status: {},
+      Timestamp_Sales: serverTimestamp(),
+    });
+
+    alert("✅ บันทึกเรียบร้อยแล้ว");
+    setForm({ product_name: "", volume: "", customer: "", delivery_date: "" });
+    fetchJobs();
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: "auto", padding: 20 }}>
-      <h2>🛒 Sales - สร้างคำสั่งผลิตใหม่</h2>
-      <form onSubmit={handleSubmit}>
-        <label>📦 Product Name</label>
-        <input
-          value={formData.product_name}
-          onChange={(e) => handleChange("product_name", e.target.value)}
-          required
-          style={inputStyle}
-        />
+    <div style={{ padding: 20 }}>
+      <h2>📄 Sales - สร้างคำสั่งผลิต</h2>
 
-        <label>⚖️ Volume (KG.)</label>
-        <input
-          value={formData.volume}
-          onChange={(e) => handleChange("volume", e.target.value)}
-          required
-          type="number"
-          style={inputStyle}
-        />
-
-        <label>👤 Customer Name</label>
-        <input
-          value={formData.customer}
-          onChange={(e) => handleChange("customer", e.target.value)}
-          required
-          style={inputStyle}
-        />
-
-        <label>📅 Delivery Date</label>
-        <input
-          value={formData.delivery_date}
-          onChange={(e) => handleChange("delivery_date", e.target.value)}
-          required
-          type="date"
-          style={inputStyle}
-        />
-
-        <button type="submit" style={buttonStyle}>➕ สร้างงานใหม่</button>
+      {/* 📝 ฟอร์มกรอกข้อมูล */}
+      <form onSubmit={handleSubmit} style={formStyle}>
+        <div>
+          <label>🎨 Product Name</label>
+          <input
+            type="text"
+            name="product_name"
+            value={form.product_name}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label>📦 Volume (KG.)</label>
+          <input
+            type="number"
+            name="volume"
+            value={form.volume}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label>👥 Customer Name</label>
+          <input
+            type="text"
+            name="customer"
+            value={form.customer}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label>📅 Delivery Date</label>
+          <input
+            type="date"
+            name="delivery_date"
+            value={form.delivery_date}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+        </div>
+        <button type="submit" style={buttonStyle}>✅ บันทึก</button>
       </form>
+
+      {/* 📋 งานที่ยังอยู่ขั้น Sales */}
+      <h3 style={{ marginTop: 40 }}>📌 งานในขั้น Sales</h3>
+      {jobs.length === 0 && <p>📭 ยังไม่มีงานในขั้นตอนนี้</p>}
+      {jobs.map((job) => (
+        <div key={job.id} style={jobCard}>
+          <p><strong>Product:</strong> {job.product_name}</p>
+          <p><strong>Customer:</strong> {job.customer}</p>
+          <p><strong>Volume:</strong> {job.volume} KG</p>
+          <p><strong>Delivery:</strong> {job.delivery_date}</p>
+        </div>
+      ))}
     </div>
   );
 }
 
+const formStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+  gap: "15px",
+  marginBottom: "20px",
+};
+
 const inputStyle = {
-  display: "block",
   width: "100%",
-  padding: "10px",
-  margin: "10px 0",
-  borderRadius: "5px",
+  padding: "8px",
+  borderRadius: "4px",
   border: "1px solid #ccc",
 };
 
 const buttonStyle = {
-  backgroundColor: "#10b981",
+  gridColumn: "span 2",
+  padding: "10px",
+  backgroundColor: "#2563eb",
   color: "white",
-  padding: "10px 20px",
   border: "none",
   borderRadius: "6px",
   cursor: "pointer",
   fontWeight: "bold",
-  fontSize: "16px",
+};
+
+const jobCard = {
+  padding: "12px",
   marginTop: "10px",
+  border: "1px solid #ddd",
+  borderRadius: "5px",
+  backgroundColor: "#f9fafb",
 };
