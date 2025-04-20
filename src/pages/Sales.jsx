@@ -32,24 +32,40 @@ export default function Sales() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.product_name || !form.volume || !form.customer || !form.delivery_date) {
-      alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
-      return;
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!form.product_name || !form.volume || !form.customer || !form.delivery_date) {
+    alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
+    return;
+  }
 
-    await addDoc(collection(db, "production_workflow"), {
-      ...form,
-      currentStep: "Warehouse",
-      status: {},
-      Timestamp_Sales: serverTimestamp(),
-    });
+  const docRef = await addDoc(collection(db, "production_workflow"), {
+    ...form,
+    currentStep: "Warehouse",
+    status: {},
+    Timestamp_Sales: serverTimestamp(),
+  });
 
-    alert("✅ บันทึกเรียบร้อยแล้ว");
-    setForm({ product_name: "", volume: "", customer: "", delivery_date: "" });
-    fetchJobs();
-  };
+  // ✅ เพิ่ม Notification ไปยังแผนก Warehouse
+  await addDoc(collection(db, "notifications"), {
+    message: `Sales เพิ่มงาน ${form.product_name} ของลูกค้า ${form.customer} เรียบร้อย รอเบิกวัตถุดิบที่แผนก Warehouse`,
+    department: "Warehouse",
+    timestamp: serverTimestamp(),
+    read: false,
+  });
+
+  // ✅ เพิ่ม Notification ไปยังหน้า Home (Global)
+  await addDoc(collection(db, "notifications"), {
+    message: `Sales เพิ่มงาน ${form.product_name} ของลูกค้า ${form.customer} เรียบร้อย รอเบิกวัตถุดิบที่แผนก Warehouse`,
+    department: "All",
+    timestamp: serverTimestamp(),
+    read: false,
+  });
+
+  alert("✅ บันทึกเรียบร้อยแล้ว");
+  setForm({ product_name: "", volume: "", customer: "", delivery_date: "" });
+  fetchJobs();
+};
 
   return (
     <div style={{ padding: 20 }}>
