@@ -79,16 +79,22 @@ export default function QC() {
           </select>
 
           <label style={labelStyle}>🧾 COA & Sample</label>
-          <select
-            value={job.qc_coa || ""}
-            onChange={(e) => handleChange(job.id, "qc_coa", e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">-- เลือก --</option>
-            <option value="ยังไม่เตรียม">ยังไม่เตรียม</option>
-            <option value="กำลังเตรียม">กำลังเตรียม</option>
-            <option value="เตรียมพร้อมแล้ว">เตรียมพร้อมแล้ว</option>
-          </select>
+<select
+  value={job.qc_coa || ""}
+  onChange={(e) => handleChange(job.id, "qc_coa", e.target.value)}
+  disabled={!job.qc_inspection || job.qc_inspection !== "ตรวจผ่านแล้ว"}
+  style={{
+    ...inputStyle,
+    backgroundColor: !job.qc_inspection || job.qc_inspection !== "ตรวจผ่านแล้ว" ? "#e5e7eb" : "",
+    color: !job.qc_inspection || job.qc_inspection !== "ตรวจผ่านแล้ว" ? "#9ca3af" : ""
+  }}
+>
+  <option value="">-- เลือก --</option>
+  <option value="ยังไม่เตรียม">ยังไม่เตรียม</option>
+  <option value="กำลังเตรียม">กำลังเตรียม</option>
+  <option value="เตรียมพร้อมแล้ว">เตรียมพร้อมแล้ว</option>
+</select>
+
 
           <button style={buttonStyle} onClick={() => handleSave(job)}>
             ✅ บันทึกสถานะ
